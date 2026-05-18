@@ -1613,3 +1613,118 @@ select.cad-form-input { appearance: auto; padding-right: 28px; }
   font-size: 12px;
   padding: 4px;
 }
+
+/* ─────────── Mobile optimisation (fallback) ─────────── */
+
+.cad-mobile-burger {
+  display: none;
+  background: transparent;
+  border: 0;
+  padding: 8px;
+  margin-right: 4px;
+  cursor: pointer;
+  color: var(--text-normal);
+  border-radius: 6px;
+  align-items: center;
+  justify-content: center;
+}
+.cad-mobile-burger:hover { background: var(--background-modifier-hover); }
+.cad-mobile-burger svg { width: 20px; height: 20px; }
+
+.cad-mobile-backdrop {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .cad-mobile-burger { display: inline-flex; }
+  .cad-app-topbar { padding: 12px 16px; gap: 10px; }
+  .cad-app-brand-text { font-size: 17px; }
+  .cad-app-topbar-meta { display: none; }
+
+  .cad-app-body { position: relative; }
+  .cad-app-nav {
+    position: absolute; top: 0; left: 0; bottom: 0;
+    width: 260px; z-index: 10;
+    transform: translateX(-100%);
+    transition: transform 220ms ease;
+    box-shadow: 4px 0 24px -6px rgba(0, 0, 0, 0.35);
+  }
+  .cad-mobile-nav-open .cad-app-nav { transform: translateX(0); }
+  .cad-mobile-backdrop { display: block; }
+  .cad-mobile-nav-open .cad-mobile-backdrop { opacity: 1; pointer-events: auto; }
+
+  .cad-home-cols, .cad-pd-cols, .cad-dash-cols {
+    grid-template-columns: 1fr !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  .cad-pd-meta { grid-template-columns: 1fr !important; }
+
+  .cad-page-header { padding: 18px 16px 12px 16px; flex-direction: column; align-items: flex-start; }
+  .cad-page-title  { font-size: 22px; line-height: 28px; }
+  .cad-page-header-right { width: 100%; flex-wrap: wrap; margin-top: 8px; }
+
+  .cad-section-label-lg { padding-left: 16px; padding-right: 16px; }
+  .cad-stat-grid { padding: 16px; gap: 8px; grid-template-columns: 1fr 1fr; }
+  .cad-stat-value { font-size: 24px; }
+  .cad-table-wrap { padding-left: 16px; padding-right: 16px; }
+  .cad-kanban-board { padding-left: 16px; padding-right: 16px; }
+  .cad-pt-wrap { padding-left: 16px; padding-right: 16px; grid-template-columns: 1fr; }
+  .cad-dash-list { padding-left: 16px; padding-right: 16px; }
+  .cad-bar-chart { padding-left: 16px; padding-right: 16px; }
+  .cad-stage-bars { padding-left: 16px; padding-right: 16px; }
+  .cad-stage-bar-row { grid-template-columns: 90px 28px 1fr 80px; gap: 8px; }
+
+  .cad-briefing { margin: 14px 16px 0 16px; padding: 14px 16px; }
+  .cad-briefing-headline { font-size: 15px; }
+  .cad-briefing-row { font-size: 13px; }
+
+  .cadence-today { padding: 22px 16px; }
+  .cadence-today .cad-day { font-size: 72px !important; }
+  .cadence-today .cad-month { font-size: 16px !important; }
+
+  .cad-inbox-row { flex-wrap: wrap; gap: 10px; padding: 12px 14px; }
+  .cad-inbox-actions { width: 100%; justify-content: flex-end; }
+
+  .cad-btn { padding: 9px 14px; font-size: 14px; min-height: 36px; }
+  .cad-btn.cad-btn-sm { padding: 7px 12px; font-size: 13px; }
+
+  .cad-create-modal,
+  .cad-import-modal,
+  .cad-capture-modal {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 20px 18px 14px 18px !important;
+  }
+  .cad-create-row,
+  .cad-import-modal .cad-create-row {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+    align-items: stretch !important;
+  }
+  .cad-import-table-wrap { max-height: 240px; }
+  .cad-form-row { flex-direction: column; align-items: stretch !important; }
+}
+
+@media (max-width: 380px) {
+  .cad-stat-grid { grid-template-columns: 1fr; }
+  .cad-page-title { font-size: 20px; }
+  .cad-briefing { padding: 12px 14px; }
+}
+
+@media (hover: none) {
+  .cad-pd-mile-row .cad-btn-danger,
+  .cad-pd-task-row .cad-btn-danger,
+  .cad-pd-task-bell,
+  .cad-pt-bell,
+  .cad-task-link-btn,
+  .cad-home-task .cad-task-link-btn { opacity: 1 !important; }
+}

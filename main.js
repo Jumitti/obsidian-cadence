@@ -1582,6 +1582,14 @@ class CadenceAppView extends obsidian.ItemView {
     // Detail-view state — when set, renders the entity form instead of the surface
     this.detailFile = null;
     this.detailEntityKey = null;
+    // Mobile nav drawer state (ephemeral, not persisted)
+    this.mobileNavOpen = false;
+  }
+
+  _toggleMobileNav(force) {
+    const root = this.containerEl.children[1];
+    this.mobileNavOpen = (typeof force === 'boolean') ? force : !this.mobileNavOpen;
+    if (root) root.toggleClass('cad-mobile-nav-open', this.mobileNavOpen);
   }
 
   async openEntityDetail(entityKey, file) {
@@ -1774,6 +1782,13 @@ class CadenceAppView extends obsidian.ItemView {
 
     /* ── Top brand bar ──────────────────────── */
     const topbar = root.createDiv({ cls: 'cad-app-topbar' });
+
+    /* Hamburger — visible only on mobile via CSS, toggles the nav drawer */
+    const burger = topbar.createEl('button', { cls: 'cad-mobile-burger' });
+    try { obsidian.setIcon(burger, 'menu'); } catch (_) {}
+    burger.title = 'Show nav';
+    burger.addEventListener('click', () => this._toggleMobileNav());
+
     const brand = topbar.createDiv({ cls: 'cad-app-brand' });
     brand.createSpan({ cls: 'cad-app-brand-mark', text: '◐' });
     brand.createSpan({ cls: 'cad-app-brand-text', text: 'Cadence' });
@@ -1792,6 +1807,11 @@ class CadenceAppView extends obsidian.ItemView {
 
     /* ── Body: left grouped nav + main content ──────── */
     const body = root.createDiv({ cls: 'cad-app-body' });
+
+    /* Backdrop — only visible on mobile when drawer is open; tapping dismisses. */
+    const backdrop = body.createDiv({ cls: 'cad-mobile-backdrop' });
+    backdrop.addEventListener('click', () => this._toggleMobileNav(false));
+
     const nav = body.createDiv({ cls: 'cad-app-nav' });
     const collapsed = this.plugin.settings.collapsedGroups || {};
 
@@ -1825,7 +1845,11 @@ class CadenceAppView extends obsidian.ItemView {
             const overdue = this._inboxOverdueCount();
             if (overdue > 0) item.createSpan({ cls: 'cad-app-nav-badge cad-nav-badge-alert', text: String(overdue) });
           }
-          item.addEventListener('click', () => this.setMode(s.id));
+          item.addEventListener('click', () => {
+            this.setMode(s.id);
+            // On mobile, picking a nav item closes the drawer.
+            if (this.mobileNavOpen) this._toggleMobileNav(false);
+          });
         });
       }
     });
