@@ -1428,6 +1428,81 @@ class CadenceEntityCreateModal extends obsidian.Modal {
       } else {
         input = row.createEl('input', { type: 'text', cls: 'cad-create-input' });
         input.placeholder = this._placeholderFor(f, isPrimary);
+
+        if (this.entityKey === 'project' && f.key === 'owner') {
+          row.style.position = 'relative'; // Ensure absolute positioning of suggestions works
+          const suggestionsBox = row.createDiv({ cls: 'cad-pd-tag-suggestions' });
+          suggestionsBox.style.position = 'absolute';
+          suggestionsBox.style.zIndex = '10000';
+          suggestionsBox.style.backgroundColor = 'var(--background-secondary)';
+          suggestionsBox.style.border = '1px solid var(--border-color)';
+          suggestionsBox.style.borderRadius = '4px';
+          suggestionsBox.style.boxShadow = 'var(--shadow-s)';
+          suggestionsBox.style.maxHeight = '150px';
+          suggestionsBox.style.overflowY = 'auto';
+          suggestionsBox.style.display = 'none';
+          suggestionsBox.style.width = 'calc(100% - 130px)'; // Account for the label width
+          suggestionsBox.style.boxSizing = 'border-box';
+          suggestionsBox.style.top = '100%';
+          suggestionsBox.style.right = '0';
+          suggestionsBox.style.marginTop = '4px';
+
+          const updateSuggestions = () => {
+            const fullVal = input.value;
+            const lastCommaIdx = fullVal.lastIndexOf(',');
+            const query = (lastCommaIdx === -1 ? fullVal : fullVal.slice(lastCommaIdx + 1)).trim().toLowerCase();
+            suggestionsBox.empty();
+
+            if (!query) {
+              suggestionsBox.style.display = 'none';
+              return;
+            }
+
+            const contacts = listEntities(this.app, 'contact');
+            const typedNames = fullVal.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+            const filtered = contacts.filter((c) =>
+              c.basename.toLowerCase().includes(query) &&
+              !typedNames.includes(c.basename.toLowerCase())
+            );
+
+            if (filtered.length === 0) {
+              suggestionsBox.style.display = 'none';
+              return;
+            }
+
+            filtered.forEach((c) => {
+              const item = suggestionsBox.createDiv({ cls: 'cad-suggestion-item' });
+              item.style.padding = '6px 10px';
+              item.style.cursor = 'pointer';
+              item.style.fontSize = '13px';
+              item.style.color = 'var(--text-normal)';
+              item.setText(c.basename);
+
+              item.addEventListener('mouseenter', () => {
+                item.style.backgroundColor = 'var(--background-modifier-hover)';
+              });
+              item.addEventListener('mouseleave', () => {
+                item.style.backgroundColor = 'transparent';
+              });
+              item.addEventListener('mousedown', (ev) => {
+                ev.preventDefault(); // Prevents losing focus!
+                const baseVal = lastCommaIdx === -1 ? '' : fullVal.slice(0, lastCommaIdx + 1) + ' ';
+                input.value = baseVal + c.basename + ', ';
+                suggestionsBox.style.display = 'none';
+                input.focus();
+              });
+            });
+
+            suggestionsBox.style.display = 'block';
+          };
+
+          input.addEventListener('input', updateSuggestions);
+          input.addEventListener('focus', updateSuggestions);
+          input.addEventListener('blur', () => {
+            setTimeout(() => { suggestionsBox.style.display = 'none'; }, 180);
+          });
+        }
       }
       input.dataset.fieldKey = f.key;
       input.dataset.fieldType = fieldType;
@@ -4636,6 +4711,25 @@ class CadenceAppView extends obsidian.ItemView {
           const primaryKey = def.fields[0].key;
           const extras = Object.assign({}, result.values);
           delete extras[primaryKey];
+
+          if (entityKey === 'project' && extras.owner) {
+            const names = String(extras.owner).split(',').map(n => n.replace(/^\[\[|\]\]$/g, '').trim()).filter(Boolean);
+            extras.owner = names.map(n => `[[${n}]]`);
+
+            // Auto-create missing contacts
+            for (const name of names) {
+              const contactFile = this.app.vault.getMarkdownFiles().find(f => f.basename.toLowerCase() === name.toLowerCase());
+              if (!contactFile) {
+                try {
+                  await createEntity(this.app, 'contact', name);
+                  new obsidian.Notice(`Created new Contact: ${name}`);
+                } catch (e) {
+                  console.warn('Failed to auto-create contact', e);
+                }
+              }
+            }
+          }
+
           if (Object.keys(extras).length) {
             await this.app.fileManager.processFrontMatter(file, (fm) => {
               Object.entries(extras).forEach(([k, v]) => {
