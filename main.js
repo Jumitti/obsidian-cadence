@@ -182,9 +182,10 @@ const ENTITIES = {
       { key: 'type', label: 'Type', type: 'enum', options: ['Call', 'Email', 'Meeting', 'Note', 'Task'] },
       { key: 'when', label: 'When', type: 'date' },
       { key: 'with', label: 'With' },
+      { key: 'company', label: 'Company' },
       { key: 'related', label: 'Related' },
     ],
-    columns: ['when', 'type', 'subject', 'with', 'related'],
+    columns: ['when', 'type', 'subject', 'with', 'company', 'related'],
   },
   sequence: {
     folder: 'Cadence/Sequences',
@@ -2057,8 +2058,9 @@ class CadenceAppView extends obsidian.ItemView {
 
   /* ── Entity DETAIL view (in-app form, autosaves to frontmatter) ── */
   async renderEntityDetail(root, entityKey, file) {
-    // Projects get a richer PM-style detail view
+    // Projects and Companies get a richer custom detail view
     if (entityKey === 'project') return this.renderProjectDetail(root, file);
+    if (entityKey === 'company') return this.renderCompanyDetail(root, file);
 
     root.addClass('cadence-detail');
     const def = ENTITIES[entityKey];
@@ -2393,6 +2395,467 @@ class CadenceAppView extends obsidian.ItemView {
     bodyHint.createDiv({ cls: 'cad-detail-body-desc', text: 'Brief, milestones, notes and any other markdown lives in the note body.' });
     const openBody = bodyHint.createEl('button', { cls: 'cad-btn primary', text: 'Open as note for full editing' });
     openBody.addEventListener('click', () => this.app.workspace.openLinkText(file.path, '', false));
+  }
+
+  async renderCompanyDetail(root, file) {
+    root.addClass('cadence-project-detail');
+    const def = ENTITIES.company;
+    const cache = this.app.metadataCache.getFileCache(file) || {};
+    const fm = Object.assign({}, cache.frontmatter || {});
+    const titleVal = fm.name || file.basename;
+
+    /* Header */
+    const head = root.createDiv({ cls: 'cad-detail-header' });
+    const headLeft = head.createDiv({ cls: 'cad-detail-header-left' });
+    const back = headLeft.createEl('button', { cls: 'cad-btn cad-detail-back', text: '← Companies' });
+    back.addEventListener('click', () => this.closeEntityDetail());
+    const breadcrumb = headLeft.createDiv({ cls: 'cad-detail-breadcrumb' });
+    breadcrumb.createSpan({ cls: 'cad-eyebrow', text: 'COMPANY' });
+    breadcrumb.createSpan({ cls: 'cad-detail-title', text: String(titleVal) });
+    breadcrumb.createDiv({ cls: 'cad-detail-path', text: file.path });
+
+    const headRight = head.createDiv({ cls: 'cad-detail-header-right' });
+    const savedBadge = headRight.createSpan({ cls: 'cad-detail-saved', text: '' });
+    const flashSaved = () => {
+      savedBadge.setText('Saved');
+      savedBadge.addClass('show');
+      clearTimeout(savedBadge._t);
+      savedBadge._t = setTimeout(() => savedBadge.removeClass('show'), 1400);
+    };
+    const openNote = headRight.createEl('button', { cls: 'cad-btn', text: 'Open as note' });
+    openNote.addEventListener('click', () => this.app.workspace.openLinkText(file.path, '', false));
+    const deleteBtn = headRight.createEl('button', { cls: 'cad-btn cad-btn-danger', text: 'Delete' });
+    deleteBtn.addEventListener('click', async () => {
+      if (!confirm(`Delete this company? This moves the file to trash.`)) return;
+      try {
+        await this.app.vault.trash(file, true);
+        new obsidian.Notice(`Deleted company: ${file.basename}`);
+        this.closeEntityDetail();
+      } catch (e) {
+        new obsidian.Notice(`Delete failed: ${e.message}`);
+      }
+    });
+
+    const hero = root.createDiv({ cls: 'cad-pd-hero' });
+    const metaRow = hero.createDiv({ cls: 'cad-pd-meta' });
+
+    // We can support fields like DOMAIN, INDUSTRY, SIZE, OWNER
+    const mkMeta = (label, key) => {
+      const cell = metaRow.createDiv({ cls: 'cad-pd-meta-cell' });
+      cell.style.position = 'relative';
+      cell.createDiv({ cls: 'cad-pd-meta-label', text: label });
+
+      if (key === 'owner') {
+        const wrap = cell.createDiv({ cls: 'cad-pd-tag-input-wrap' });
+        wrap.style.display = 'flex';
+        wrap.style.flexWrap = 'wrap';
+        wrap.style.gap = '6px';
+        wrap.style.alignItems = 'center';
+        wrap.style.border = '1px solid var(--border-color, #ccc)';
+        wrap.style.borderRadius = '4px';
+        wrap.style.padding = '6px 10px';
+        wrap.style.minHeight = '36px';
+        wrap.style.backgroundColor = 'var(--background-primary, #fff)';
+        wrap.style.cursor = 'text';
+
+        const inp = wrap.createEl('input', { type: 'text', cls: 'cad-pd-tag-input-field' });
+        inp.style.border = 'none';
+        inp.style.outline = 'none';
+        inp.style.background = 'transparent';
+        inp.style.color = 'var(--text-normal)';
+        inp.style.flex = '1';
+        inp.style.minWidth = '80px';
+        inp.style.padding = '0';
+        inp.style.height = '24px';
+        inp.style.lineHeight = '24px';
+        inp.placeholder = 'Add owner...';
+
+        const suggestionsBox = cell.createDiv({ cls: 'cad-pd-tag-suggestions' });
+        suggestionsBox.style.position = 'absolute';
+        suggestionsBox.style.zIndex = '10000';
+        suggestionsBox.style.backgroundColor = 'var(--background-secondary)';
+        suggestionsBox.style.border = '1px solid var(--border-color)';
+        suggestionsBox.style.borderRadius = '4px';
+        suggestionsBox.style.boxShadow = 'var(--shadow-s)';
+        suggestionsBox.style.maxHeight = '150px';
+        suggestionsBox.style.overflowY = 'auto';
+        suggestionsBox.style.display = 'none';
+        suggestionsBox.style.width = '100%';
+        suggestionsBox.style.boxSizing = 'border-box';
+        suggestionsBox.style.top = '100%';
+        suggestionsBox.style.left = '0';
+        suggestionsBox.style.marginTop = '4px';
+
+        let owners = [];
+        const cur = fm[key];
+        if (Array.isArray(cur)) {
+          owners = cur.map(v => String(v).replace(/^\[\[|\]\]$/g, '').trim()).filter(Boolean);
+        } else if (cur != null && cur !== '') {
+          owners = [String(cur).replace(/^\[\[|\]\]$/g, '').trim()].filter(Boolean);
+        }
+
+        const updateSuggestions = () => {
+          const query = inp.value.trim().toLowerCase();
+          suggestionsBox.empty();
+
+          const contacts = listEntities(this.app, 'contact');
+          const filtered = contacts.filter((c) =>
+            (!query || c.basename.toLowerCase().includes(query)) &&
+            !owners.includes(c.basename)
+          );
+
+          if (filtered.length === 0) {
+            suggestionsBox.style.display = 'none';
+            return;
+          }
+
+          filtered.forEach((c) => {
+            const item = suggestionsBox.createDiv({ cls: 'cad-suggestion-item' });
+            item.style.padding = '6px 10px';
+            item.style.cursor = 'pointer';
+            item.style.fontSize = '13px';
+            item.style.color = 'var(--text-normal)';
+            item.setText(c.basename);
+
+            item.addEventListener('mouseenter', () => {
+              item.style.backgroundColor = 'var(--background-modifier-hover)';
+            });
+            item.addEventListener('mouseleave', () => {
+              item.style.backgroundColor = 'transparent';
+            });
+            item.addEventListener('mousedown', async (ev) => {
+              ev.preventDefault();
+              await addOwner(c.basename);
+              suggestionsBox.style.display = 'none';
+            });
+          });
+
+          suggestionsBox.style.display = 'block';
+        };
+
+        const renderChips = () => {
+          const existing = wrap.querySelectorAll('.cad-tag-chip');
+          existing.forEach(c => c.remove());
+
+          owners.forEach((owner) => {
+            const chip = wrap.createDiv({ cls: 'cad-tag-chip' });
+            chip.style.display = 'inline-flex';
+            chip.style.alignItems = 'center';
+            chip.style.gap = '6px';
+            chip.style.backgroundColor = 'var(--background-secondary, #eee)';
+            chip.style.padding = '2px 8px';
+            chip.style.borderRadius = '12px';
+            chip.style.fontSize = '12px';
+            chip.style.height = '24px';
+            chip.style.boxSizing = 'border-box';
+            chip.style.color = 'var(--text-normal)';
+
+            const link = chip.createSpan({ text: owner });
+            link.style.textDecoration = 'underline';
+            link.style.cursor = 'pointer';
+            link.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const contactFile = this.app.vault.getMarkdownFiles().find(f => f.basename.toLowerCase() === owner.toLowerCase());
+              if (contactFile) {
+                this.openEntityDetail('contact', contactFile);
+              } else {
+                this.app.workspace.openLinkText(owner, '', false);
+              }
+            });
+
+            const close = chip.createSpan({ text: '×' });
+            close.style.cursor = 'pointer';
+            close.style.fontWeight = 'bold';
+            close.style.fontSize = '14px';
+            close.style.lineHeight = '1';
+            close.style.color = 'var(--text-muted)';
+            close.addEventListener('click', async (ev) => {
+              ev.stopPropagation();
+              owners = owners.filter(o => o !== owner);
+              await save();
+              renderChips();
+            });
+
+            wrap.insertBefore(chip, inp);
+          });
+        };
+
+        const save = async () => {
+          const val = owners.map(o => `[[${o}]]`);
+          await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+            frontmatter.owner = val;
+          });
+          flashSaved();
+        };
+
+        const addOwner = async (name) => {
+          name = name.trim();
+          if (!name) return;
+          if (owners.includes(name)) {
+            inp.value = '';
+            return;
+          }
+          owners.push(name);
+          inp.value = '';
+          renderChips();
+          await save();
+
+          // Auto-create contact if missing
+          const contactFile = this.app.vault.getMarkdownFiles().find(f => f.basename.toLowerCase() === name.toLowerCase());
+          if (!contactFile) {
+            try {
+              await createEntity(this.app, 'contact', name);
+              new obsidian.Notice(`Created new Contact: ${name}`);
+            } catch (e) {
+              console.warn('Failed to auto-create contact', e);
+            }
+          }
+        };
+
+        inp.addEventListener('input', updateSuggestions);
+        inp.addEventListener('focus', updateSuggestions);
+        inp.addEventListener('keydown', async (ev) => {
+          if (ev.key === 'Enter') {
+            ev.preventDefault();
+            await addOwner(inp.value);
+            suggestionsBox.style.display = 'none';
+          } else if (ev.key === 'Backspace' && !inp.value && owners.length > 0) {
+            owners.pop();
+            await save();
+            renderChips();
+          }
+        });
+        inp.addEventListener('blur', async () => {
+          setTimeout(async () => {
+            suggestionsBox.style.display = 'none';
+            if (inp.value.trim()) {
+              await addOwner(inp.value);
+            }
+          }, 180);
+        });
+        wrap.addEventListener('click', () => inp.focus());
+        renderChips();
+      } else if (key === 'tags') {
+        const inp = cell.createEl('input', { type: 'text', cls: 'cad-pd-meta-input', placeholder: 'tag1, tag2...' });
+        const cur = fm[key];
+        if (Array.isArray(cur)) inp.value = cur.join(', ');
+        else if (cur != null) inp.value = String(cur);
+        let t;
+        const commit = () => {
+          let val = inp.value ? inp.value.split(',').map(t => t.trim()).filter(Boolean) : null;
+          this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+            if (!val || val.length === 0) delete frontmatter[key];
+            else frontmatter[key] = val;
+          });
+          flashSaved();
+        };
+        inp.addEventListener('input', () => { clearTimeout(t); t = setTimeout(commit, 350); });
+        inp.addEventListener('blur', commit);
+      } else {
+        const inp = cell.createEl('input', { type: 'text', cls: 'cad-pd-meta-input' });
+        const cur = fm[key];
+        if (cur != null) inp.value = String(cur);
+        let t;
+        const commit = () => {
+          let val = inp.value || null;
+          this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+            if (val === '') delete frontmatter[key];
+            else frontmatter[key] = val;
+          });
+          flashSaved();
+        };
+        inp.addEventListener('input', () => { clearTimeout(t); t = setTimeout(commit, 350); });
+        inp.addEventListener('blur', commit);
+      }
+    };
+
+    mkMeta('DOMAIN', 'domain');
+    mkMeta('INDUSTRY', 'industry');
+    mkMeta('SIZE', 'size');
+    mkMeta('OWNER', 'owner');
+    mkMeta('TAGS', 'tags');
+
+    /* Two-column body */
+    const cols = root.createDiv({ cls: 'cad-pd-cols' });
+    const left = cols.createDiv({ cls: 'cad-pd-col' });
+    const right = cols.createDiv({ cls: 'cad-pd-col' });
+
+    // Relationships Data
+    const companyName = file.basename;
+    const matchCompany = (val, companyName) => {
+      if (!val) return false;
+      const nameLower = companyName.toLowerCase();
+      const arr = Array.isArray(val) ? val : [val];
+      return arr.some(v => String(v).replace(/^\[\[|\]\]$/g, '').trim().toLowerCase() === nameLower);
+    };
+
+    const contacts = listEntities(this.app, 'contact').filter(e => {
+      const cache = this.app.metadataCache.getFileCache(e.file);
+      const fm = cache && cache.frontmatter || {};
+      return matchCompany(fm.company, companyName);
+    });
+
+    const deals = listEntities(this.app, 'deal').filter(e => {
+      const cache = this.app.metadataCache.getFileCache(e.file);
+      const fm = cache && cache.frontmatter || {};
+      return matchCompany(fm.company, companyName);
+    });
+
+    const activities = listEntities(this.app, 'activity').filter(e => {
+      const cache = this.app.metadataCache.getFileCache(e.file);
+      const fm = cache && cache.frontmatter || {};
+      return matchCompany(fm.company, companyName) || matchCompany(fm.related, companyName);
+    });
+
+    /* ── 1. Contacts Card (Left Column) ── */
+    const contactsCard = left.createDiv({ cls: 'cad-pd-card' });
+    const contactsHead = contactsCard.createDiv({ cls: 'cad-pd-card-head' });
+    contactsHead.createDiv({ cls: 'cad-pd-card-title', text: `CONTACTS · ${contacts.length}` });
+    const addContactBtn = contactsHead.createEl('button', { cls: 'cad-btn cad-btn-sm', text: '+ Add Contact' });
+    addContactBtn.addEventListener('click', () => {
+      this._createEntityFromPrompt('contact');
+    });
+
+    const contactsList = contactsCard.createDiv({ cls: 'cad-pd-checklist' });
+    contactsList.style.padding = '0';
+    if (!contacts.length) {
+      contactsList.createDiv({ cls: 'cad-empty', text: 'No contacts associated yet.' });
+    } else {
+      const tableWrap = contactsList.createDiv({ cls: 'cad-list-wrap' });
+      tableWrap.style.marginTop = '0';
+      tableWrap.style.boxShadow = 'none';
+      tableWrap.style.border = 'none';
+      tableWrap.style.borderRadius = '0';
+      tableWrap.style.overflowX = 'auto';
+
+      const table = tableWrap.createEl('table', { cls: 'cad-table' });
+      const thead = table.createEl('thead');
+      const trh = thead.createEl('tr');
+      trh.createEl('th', { text: 'Name' });
+      trh.createEl('th', { text: 'Role' });
+      trh.createEl('th', { text: 'Email' });
+      trh.createEl('th', { text: 'Phone' });
+      trh.createEl('th', { text: 'Last Contact' });
+
+      const tbody = table.createEl('tbody');
+      contacts.forEach(c => {
+        const tr = tbody.createEl('tr', { cls: 'cad-row' });
+        const cache = this.app.metadataCache.getFileCache(c.file) || {};
+        const fm = cache.frontmatter || {};
+
+        // Name
+        const tdName = tr.createEl('td');
+        const nameLink = tdName.createEl('a', { text: c.basename, cls: 'cad-row-primary' });
+        nameLink.style.fontWeight = 'bold';
+        nameLink.style.textDecoration = 'underline';
+        nameLink.style.cursor = 'pointer';
+        nameLink.addEventListener('click', () => this.openEntityDetail('contact', c.file));
+
+        // Role
+        tr.createEl('td', { text: fm.role || '—' });
+
+        // Email
+        tr.createEl('td', { text: fm.email || '—' });
+
+        // Phone
+        tr.createEl('td', { text: fm.phone || '—' });
+
+        // Last Contact
+        tr.createEl('td', { text: fm.lastContact ? fmtValue(fm.lastContact, 'date') : '—' });
+      });
+    }
+
+    /* ── 2. Pipelines / Deals Card (Right Column) ── */
+    const dealsCard = right.createDiv({ cls: 'cad-pd-card' });
+    const dealsHead = dealsCard.createDiv({ cls: 'cad-pd-card-head' });
+    dealsHead.createDiv({ cls: 'cad-pd-card-title', text: `PIPELINE DEALS · ${deals.length}` });
+    const addDealBtn = dealsHead.createEl('button', { cls: 'cad-btn cad-btn-sm', text: '+ Add Deal' });
+    addDealBtn.addEventListener('click', () => {
+      this._createEntityFromPrompt('deal');
+    });
+
+    const dealsList = dealsCard.createDiv({ cls: 'cad-pd-checklist' });
+    if (!deals.length) {
+      dealsList.createDiv({ cls: 'cad-empty', text: 'No pipeline deals associated.' });
+    } else {
+      deals.forEach(d => {
+        const row = dealsList.createDiv({ cls: 'cad-pd-mile-row' });
+        row.style.justifyContent = 'space-between';
+        row.style.padding = '8px 12px';
+        row.style.borderBottom = '1px solid var(--border-color)';
+
+        const leftSide = row.createDiv();
+        const dealLink = leftSide.createEl('a', { text: d.basename, cls: 'cad-row-primary' });
+        dealLink.style.fontWeight = 'bold';
+        dealLink.style.textDecoration = 'underline';
+        dealLink.style.cursor = 'pointer';
+        dealLink.addEventListener('click', () => this.openEntityDetail('deal', d.file));
+
+        const cache = this.app.metadataCache.getFileCache(d.file) || {};
+        const fm = cache.frontmatter || {};
+        if (fm.stage) {
+          const stageBadge = leftSide.createSpan({ text: fm.stage, cls: `cad-pill cad-pill-${fm.stage.toLowerCase()}` });
+          stageBadge.style.marginLeft = '8px';
+          stageBadge.style.fontSize = '10px';
+          stageBadge.style.padding = '2px 6px';
+        }
+
+        const rightSide = row.createDiv();
+        if (fm.value) {
+          rightSide.createSpan({ text: fmtValue(fm.value, 'currency'), cls: 'cad-deal-value' });
+        }
+      });
+    }
+
+    /* ── 3. Activities Card (Right Column) ── */
+    const actCard = right.createDiv({ cls: 'cad-pd-card' });
+    actCard.style.marginTop = '16px';
+    const actHead = actCard.createDiv({ cls: 'cad-pd-card-head' });
+    actHead.createDiv({ cls: 'cad-pd-card-title', text: `ACTIVITIES · ${activities.length}` });
+    const addActBtn = actHead.createEl('button', { cls: 'cad-btn cad-btn-sm', text: '+ Log Activity' });
+    addActBtn.addEventListener('click', () => {
+      this._createEntityFromPrompt('activity');
+    });
+
+    const actList = actCard.createDiv({ cls: 'cad-pd-checklist' });
+    if (!activities.length) {
+      actList.createDiv({ cls: 'cad-empty', text: 'No activities logged.' });
+    } else {
+      activities.forEach(a => {
+        const row = actList.createDiv({ cls: 'cad-pd-mile-row' });
+        row.style.justifyContent = 'space-between';
+        row.style.padding = '8px 12px';
+        row.style.borderBottom = '1px solid var(--border-color)';
+
+        const leftSide = row.createDiv();
+        const cache = this.app.metadataCache.getFileCache(a.file) || {};
+        const fm = cache.frontmatter || {};
+
+        let icon = '📝';
+        if (fm.type === 'Call') icon = '📞';
+        else if (fm.type === 'Email') icon = '✉️';
+        else if (fm.type === 'Meeting') icon = '🤝';
+        else if (fm.type === 'Task') icon = '✅';
+
+        leftSide.createSpan({ text: icon + ' ' });
+        const actLink = leftSide.createEl('a', { text: a.basename, cls: 'cad-row-primary' });
+        actLink.style.fontWeight = '500';
+        actLink.style.textDecoration = 'underline';
+        actLink.style.cursor = 'pointer';
+        actLink.addEventListener('click', () => this.openEntityDetail('activity', a.file));
+
+        if (fm.with) {
+          leftSide.createSpan({ text: ` with ${fm.with}`, cls: 'cad-text-muted' });
+        }
+
+        const rightSide = row.createDiv();
+        rightSide.style.fontSize = '12px';
+        rightSide.style.color = 'var(--text-muted)';
+        if (fm.when) {
+          rightSide.createSpan({ text: fmtValue(fm.when, 'date') });
+        }
+      });
+    }
   }
 
   /* ── Project DETAIL view (real PM surface) ─────── */
