@@ -2060,42 +2060,236 @@ class CadenceAppView extends obsidian.ItemView {
       return;
     }
 
+    // Interactive Controls Bar (Search + Dynamic Filters)
+    const controls = root.createDiv({ cls: 'cad-list-controls' });
+    controls.style.display = 'flex';
+    controls.style.gap = '12px';
+    controls.style.alignItems = 'center';
+    controls.style.marginBottom = '16px';
+    controls.style.flexWrap = 'wrap';
+
+    // Search bar
+    const searchWrap = controls.createDiv({ cls: 'cad-search-wrap' });
+    searchWrap.style.display = 'flex';
+    searchWrap.style.alignItems = 'center';
+    searchWrap.style.gap = '6px';
+    searchWrap.style.flex = '1';
+    searchWrap.style.minWidth = '200px';
+
+    const searchInput = searchWrap.createEl('input', {
+      type: 'text',
+      cls: 'cad-pd-meta-input',
+      placeholder: `Search ${def.plural.toLowerCase()}...`
+    });
+    searchInput.style.width = '100%';
+    searchInput.style.margin = '0';
+
+    // Dynamic Filters based on fields
+    const filterableKeys = def.fields
+      .map(f => f.key)
+      .filter(k => {
+        const fdef = def.fields.find(f => f.key === k);
+        return fdef && (fdef.type === 'enum' || ['company', 'role', 'with', 'related', 'status', 'tier', 'type'].includes(k));
+      });
+
+    const activeFilters = {};
+    let searchVal = '';
+    let currentSortField = def.columns[0] || '';
+    let currentSortAsc = true;
+
+    filterableKeys.forEach(k => {
+      const fdef = def.fields.find(f => f.key === k);
+      if (!fdef) return;
+
+      const uniqueVals = new Set();
+      filtered.forEach(e => {
+        const val = entityValue(e, k, def);
+        if (Array.isArray(val)) {
+          val.forEach(v => {
+            if (v) {
+              const clean = String(v).replace(/^\[\[|\]\]$/g, '').trim();
+              if (clean) uniqueVals.add(clean);
+            }
+          });
+        } else if (val != null && val !== '') {
+          const clean = String(val).replace(/^\[\[|\]\]$/g, '').trim();
+          if (clean) uniqueVals.add(clean);
+        }
+      });
+
+      if (uniqueVals.size === 0) return;
+
+      const filterWrap = controls.createDiv({ cls: 'cad-filter-select-wrap' });
+      filterWrap.style.display = 'flex';
+      filterWrap.style.alignItems = 'center';
+      filterWrap.style.gap = '6px';
+
+      const sel = filterWrap.createEl('select', { cls: 'cad-pd-meta-input' });
+      sel.style.margin = '0';
+      sel.style.padding = '4px 8px';
+      sel.style.minHeight = '30px';
+      sel.style.border = '1px solid var(--border-color)';
+      sel.style.borderRadius = '4px';
+
+      sel.createEl('option', { value: '', text: `All ${fdef.label}s` });
+      Array.from(uniqueVals).sort().forEach(v => {
+        sel.createEl('option', { value: v, text: v });
+      });
+
+      sel.addEventListener('change', () => {
+        activeFilters[k] = sel.value;
+        renderTableRows();
+      });
+    });
+
     const cols = (opts.columns || def.columns).map((k) => def.fields.find((f) => f.key === k)).filter(Boolean);
     const tableWrap = root.createDiv({ cls: 'cad-table-wrap' });
     const table = tableWrap.createEl('table', { cls: 'cad-table' });
 
     const thead = table.createEl('thead');
     const trh = thead.createEl('tr');
-    cols.forEach((f) => trh.createEl('th', { text: f.label }));
+    
+    const headers = [];
+    cols.forEach((f) => {
+      const th = trh.createEl('th');
+      th.style.cursor = 'pointer';
+      th.style.userSelect = 'none';
+      const thSpan = th.createSpan({ text: f.label + ' ' });
+      const indicator = th.createSpan({ text: f.key === currentSortField ? '▲' : '↕' });
+      indicator.style.opacity = f.key === currentSortField ? '1' : '0.4';
+      indicator.style.marginLeft = '4px';
 
-    const tbody = table.createEl('tbody');
-    filtered.forEach((e) => {
-      const tr = tbody.createEl('tr', { cls: 'cad-row' });
-      cols.forEach((f, i) => {
-        const td = tr.createEl('td');
-        const val = entityValue(e, f.key, def);
-        const formatted = fmtValue(val, f.type);
-        if (i === 0) {
-          const a = td.createEl('a', { cls: 'cad-row-primary', text: formatted || e.basename });
-          a.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            this.openEntityDetail(entityKey, e.file);
-          });
-        } else if (f.key === 'owner' || f.key === 'assigned') {
-          this._renderOwnerLinks(td, val, false);
-        } else if (f.key === 'company') {
-          this._renderEntityLinks(td, val, 'company');
-        } else if (f.key === 'partner') {
-          this._renderEntityLinks(td, val, 'partner');
-        } else if (f.key === 'contact' || f.key === 'contacts' || f.key === 'with') {
-          this._renderEntityLinks(td, val, 'contact');
-        } else if (f.key === 'related') {
-          this._renderEntityLinks(td, val, 'project');
+      headers.push({ key: f.key, th, indicator });
+
+      th.addEventListener('click', () => {
+        if (currentSortField === f.key) {
+          currentSortAsc = !currentSortAsc;
         } else {
-          td.setText(formatted);
+          currentSortField = f.key;
+          currentSortAsc = true;
         }
+
+        headers.forEach(h => {
+          if (h.key === currentSortField) {
+            h.indicator.setText(currentSortAsc ? '▲' : '▼');
+            h.indicator.style.opacity = '1';
+          } else {
+            h.indicator.setText('↕');
+            h.indicator.style.opacity = '0.4';
+          }
+        });
+
+        renderTableRows();
       });
     });
+
+    const tbody = table.createEl('tbody');
+
+    const renderTableRows = () => {
+      tbody.empty();
+
+      // 1. Filter
+      let displayed = filtered.filter(e => {
+        if (searchVal) {
+          const match = cols.some(f => {
+            const val = entityValue(e, f.key, def);
+            if (val == null) return false;
+            return String(val).toLowerCase().includes(searchVal);
+          }) || e.basename.toLowerCase().includes(searchVal);
+          if (!match) return false;
+        }
+
+        for (const [k, filterVal] of Object.entries(activeFilters)) {
+          if (!filterVal) continue;
+          const val = entityValue(e, k, def);
+          if (Array.isArray(val)) {
+            const cleanVals = val.map(v => String(v).replace(/^\[\[|\]\]$/g, '').trim().toLowerCase());
+            if (!cleanVals.includes(filterVal.toLowerCase())) return false;
+          } else {
+            const cleanVal = String(val || '').replace(/^\[\[|\]\]$/g, '').trim().toLowerCase();
+            if (cleanVal !== filterVal.toLowerCase()) return false;
+          }
+        }
+
+        return true;
+      });
+
+      // 2. Sort
+      if (currentSortField) {
+        const fdef = def.fields.find(f => f.key === currentSortField);
+        const ftype = fdef ? fdef.type : 'text';
+
+        displayed.sort((a, b) => {
+          let valA = entityValue(a, currentSortField, def);
+          let valB = entityValue(b, currentSortField, def);
+
+          if (valA && typeof valA === 'string') valA = valA.replace(/^\[\[|\]\]$/g, '').trim();
+          if (valB && typeof valB === 'string') valB = valB.replace(/^\[\[|\]\]$/g, '').trim();
+
+          if (valA == null) valA = '';
+          if (valB == null) valB = '';
+
+          let diff = 0;
+          if (ftype === 'number' || ftype === 'currency') {
+            diff = Number(valA) - Number(valB);
+          } else if (ftype === 'date') {
+            const dateA = new Date(valA).getTime() || 0;
+            const dateB = new Date(valB).getTime() || 0;
+            diff = dateA - dateB;
+          } else {
+            diff = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+          }
+
+          return currentSortAsc ? diff : -diff;
+        });
+      }
+
+      // 3. Render
+      if (displayed.length === 0) {
+        const tr = tbody.createEl('tr');
+        const td = tr.createEl('td', { text: 'No matching entries found.' });
+        td.colSpan = cols.length;
+        td.style.textAlign = 'center';
+        td.style.color = 'var(--text-muted)';
+        td.style.padding = '20px';
+        return;
+      }
+
+      displayed.forEach((e) => {
+        const tr = tbody.createEl('tr', { cls: 'cad-row' });
+        cols.forEach((f, i) => {
+          const td = tr.createEl('td');
+          const val = entityValue(e, f.key, def);
+          const formatted = fmtValue(val, f.type);
+          if (i === 0) {
+            const a = td.createEl('a', { cls: 'cad-row-primary', text: formatted || e.basename });
+            a.addEventListener('click', (ev) => {
+              ev.preventDefault();
+              this.openEntityDetail(entityKey, e.file);
+            });
+          } else if (f.key === 'owner' || f.key === 'assigned') {
+            this._renderOwnerLinks(td, val, false);
+          } else if (f.key === 'company') {
+            this._renderEntityLinks(td, val, 'company');
+          } else if (f.key === 'partner') {
+            this._renderEntityLinks(td, val, 'partner');
+          } else if (f.key === 'contact' || f.key === 'contacts' || f.key === 'with') {
+            this._renderEntityLinks(td, val, 'contact');
+          } else if (f.key === 'related') {
+            this._renderEntityLinks(td, val, 'project');
+          } else {
+            td.setText(formatted);
+          }
+        });
+      });
+    };
+
+    searchInput.addEventListener('input', () => {
+      searchVal = searchInput.value.trim().toLowerCase();
+      renderTableRows();
+    });
+
+    renderTableRows();
   }
 
   /* ── Entity DETAIL view (in-app form, autosaves to frontmatter) ── */
