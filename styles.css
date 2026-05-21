@@ -1920,3 +1920,54 @@ select.cad-form-input { appearance: auto; padding-right: 28px; }
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ─── Drag and Drop Properties Reordering ─── */
+.cad-prop-drag-header {
+  width: 40px;
+  text-align: center !important;
+}
+.cad-prop-drag-cell {
+  text-align: center;
+  padding: 10px 4px !important;
+  user-select: none;
+}
+.cad-prop-drag-handle {
+  cursor: grab;
+  color: var(--text-faint);
+  font-size: 16px;
+  font-weight: bold;
+  display: inline-block;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 100ms ease, color 100ms ease;
+}
+.cad-prop-drag-handle:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.cad-prop-drag-handle:active {
+  cursor: grabbing;
+}
+.cad-prop-lock-icon {
+  color: var(--text-muted);
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* Drag State Styling */
+.cad-prop-row-draggable {
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+.cad-prop-row.cad-drag-active {
+  opacity: 0.4;
+  border: 1px dashed var(--interactive-accent);
+  background: var(--background-secondary-alt);
+}
+.cad-prop-row.cad-drag-hover {
+  background-color: var(--background-modifier-hover);
+  box-shadow: inset 0 2px 0 var(--interactive-accent), inset 0 -2px 0 var(--interactive-accent);
+}
+.cad-prop-row-locked {
+  background: var(--background-secondary-alt);
+  opacity: 0.95;
+}

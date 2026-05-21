@@ -264,19 +264,113 @@ const DEFAULT_SETTINGS = {
   dailyNoteFormat: 'YYYY-MM-DD',
   journalHeading: '## Journal',
   tasksHeading: '## Today',
-  weekStartsOn: 1, // 0 = Sunday, 1 = Monday
+  weekStartsOn: 1,
   defaultTab: 'home',
-  openOnStartup: false,
-  collapsedGroups: {}, // { [groupId]: true }
+  openOnStartup: true,
+  collapsedGroups: {},
   currency: 'USD',
   cadenceAppDark: false,
-  taskProjectLinks: {}, // { "dailyPath::taskText": "Cadence/Projects/X.md" }
-  modules: { crm: true, prm: true, planner: true },
-  desktopNotifications: false,
-  reminders: [], // [{ id, text, when (ISO|null), repeat ('none'|'daily'|'weekly'), notified, done, createdAt }]
+  taskProjectLinks: {},
+  modules: {
+    crm: true,
+    prm: false,
+    planner: true
+  },
+  desktopNotifications: true,
+  reminders: [],
   cadenceApiUrl: '',
   cadenceApiToken: '',
-  customEntities: {},
+  customEntities: {
+    project: [
+      { key: 'name', label: 'Name', primary: true, type: 'text' },
+      { key: 'status', label: 'Status', type: 'enum', options: ['active', 'on_hold', 'backlog', 'done', 'cancelled'] },
+      { key: 'priority', label: 'Priority', type: 'enum', options: ['low', 'medium', 'high'] },
+      { key: 'owner', label: 'Owner', type: 'multitext', suggestionSource: 'folder:Cadence/Contacts' },
+      { key: 'started', label: 'Started', type: 'date' },
+      { key: 'due', label: 'Due', type: 'date' },
+      { key: 'tags', label: 'Tags', type: 'tags' }
+    ],
+    contact: [
+      { key: 'name', label: 'Name', primary: true, type: 'text' },
+      { key: 'email', label: 'Email', type: 'multitext', isList: true, suggestionSource: 'none' },
+      { key: 'phone', label: 'Phone', isList: true, type: 'multitext', suggestionSource: 'none' },
+      { key: 'company', label: 'Company', isList: true, type: 'multitext', suggestionSource: 'folder:Cadence/Companies' },
+      { key: 'role', label: 'Role', isList: true, type: 'multitext' },
+      { key: 'project', label: 'Project', type: 'multitext', suggestionSource: 'folder:Cadence/Projects' },
+      { key: 'lastContact', label: 'Last contact', type: 'date' },
+      { key: 'tags', label: 'Tags', type: 'tags' }
+    ],
+    deal: [
+      { key: 'title', label: 'Title', primary: true, type: 'text' },
+      { key: 'stage', label: 'Stage', type: 'enum', options: ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'] },
+      { key: 'value', label: 'Value', type: 'currency' },
+      { key: 'company', label: 'Company', type: 'multitext', suggestionSource: 'folder:Cadence/Companies' },
+      { key: 'contact', label: 'Contact', type: 'multitext', suggestionSource: 'folder:Cadence/Contacts' },
+      { key: 'closeBy', label: 'Close by', type: 'date' },
+      { key: 'project', label: 'Project', type: 'multitext', suggestionSource: 'folder:Cadence/Projects' },
+      { key: 'owner', label: 'Owner', type: 'multitext', suggestionSource: 'folder:Cadence/Contacts' }
+    ],
+    company: [
+      { key: 'name', label: 'Name', primary: true, type: 'text' },
+      { key: 'domain', label: 'Domain', isList: true, type: 'multitext' },
+      { key: 'industry', label: 'Industry', isList: true, type: 'multitext' },
+      { key: 'size', label: 'Size', type: 'text' },
+      { key: 'owner', label: 'Owner', type: 'multitext', suggestionSource: 'folder:Cadence/Contacts' },
+      { key: 'tags', label: 'Tags', type: 'tags' }
+    ],
+    activity: [
+      { key: 'subject', label: 'Subject', primary: true, type: 'text' },
+      { key: 'type', label: 'Type', type: 'enum', options: ['Call', 'Email', 'Meeting', 'Note', 'Task'] },
+      { key: 'when', label: 'When', type: 'date' },
+      { key: 'with', label: 'With', type: 'multitext', suggestionSource: 'folder:Cadence/Contacts' },
+      { key: 'company', label: 'Company', type: 'multitext', suggestionSource: 'folder:Cadence/Companies' },
+      { key: 'project', label: 'Project', type: 'multitext', suggestionSource: 'folder:Cadence/Projects' }
+    ],
+    partner: [
+      { key: 'name', label: 'Name', primary: true },
+      { key: 'tier', label: 'Tier', type: 'enum', options: ['Gold', 'Silver', 'Bronze', 'Standard'] },
+      { key: 'status', label: 'Status', type: 'enum', options: ['Active', 'Onboarding', 'Inactive', 'Churned'] },
+      { key: 'owner', label: 'Owner', type: 'multitext', suggestionSource: 'folder:Cadence/Contacts' },
+      { key: 'region', label: 'Region' }
+    ],
+    registration: [
+      { key: 'title', label: 'Title', primary: true },
+      { key: 'partner', label: 'Partner' },
+      { key: 'status', label: 'Status', type: 'enum', options: ['Submitted', 'Approved', 'Rejected', 'Expired'] },
+      { key: 'value', label: 'Value', type: 'currency' },
+      { key: 'submitted', label: 'Submitted', type: 'date' },
+      { key: 'expires', label: 'Expires', type: 'date' }
+    ],
+    commission: [
+      { key: 'reference', label: 'Ref', primary: true },
+      { key: 'partner', label: 'Partner' },
+      { key: 'amount', label: 'Amount', type: 'currency' },
+      { key: 'status', label: 'Status', type: 'enum', options: ['Pending', 'Earned', 'Paid', 'Disputed'] },
+      { key: 'period', label: 'Period' },
+      { key: 'paidOn', label: 'Paid on', type: 'date' }
+    ],
+    lead: [
+      { key: 'name', label: 'Name', primary: true },
+      { key: 'company', label: 'Company', type: 'multitext', suggestionSource: 'folder:Cadence/Companies' },
+      { key: 'source', label: 'Source' },
+      { key: 'status', label: 'Status', type: 'enum', options: ['New', 'Contacted', 'Qualified', 'Disqualified', 'Converted'] },
+      { key: 'assigned', label: 'Assigned' }
+    ],
+    certification: [
+      { key: 'name', label: 'Name', primary: true },
+      { key: 'partner', label: 'Partner' },
+      { key: 'level', label: 'Level' },
+      { key: 'issued', label: 'Issued', type: 'date' },
+      { key: 'expires', label: 'Expires', type: 'date' }
+    ],
+    sequence: [
+      { key: 'name', label: 'Name', primary: true },
+      { key: 'audience', label: 'Audience' },
+      { key: 'steps', label: 'Steps', type: 'number' },
+      { key: 'active', label: 'Active', type: 'number' },
+      { key: 'status', label: 'Status', type: 'enum', options: ['Draft', 'Active', 'Paused', 'Archived'] }
+    ]
+  }
 };
 
 /* Module-level — kept in sync by the plugin so the standalone fmtValue helper
@@ -2481,16 +2575,22 @@ class CadenceAppView extends obsidian.ItemView {
             });
           } else if (f.key === 'owner' || f.key === 'assigned') {
             this._renderOwnerLinks(td, val, false);
-          } else if (f.key === 'company') {
-            this._renderEntityLinks(td, val, 'company');
-          } else if (f.key === 'partner') {
-            this._renderEntityLinks(td, val, 'partner');
-          } else if (f.key === 'contact' || f.key === 'contacts' || f.key === 'with') {
-            this._renderEntityLinks(td, val, 'contact');
-          } else if (f.key === 'related') {
-            this._renderEntityLinks(td, val, 'project');
           } else {
-            td.setText(formatted);
+            const sugSrc = f.suggestionSource || getFieldSuggestionSource(f);
+            if (f.type === 'multitext' && sugSrc && sugSrc !== 'none' && sugSrc !== 'tags') {
+              const targetSrc = sugSrc === 'history' ? 'folder:Cadence/Shared' : sugSrc;
+              this._renderEntityLinks(td, val, targetSrc);
+            } else if (f.key === 'company') {
+              this._renderEntityLinks(td, val, 'company');
+            } else if (f.key === 'partner') {
+              this._renderEntityLinks(td, val, 'partner');
+            } else if (f.key === 'contact' || f.key === 'contacts' || f.key === 'with') {
+              this._renderEntityLinks(td, val, 'contact');
+            } else if (f.key === 'related') {
+              this._renderEntityLinks(td, val, 'project');
+            } else {
+              td.setText(formatted);
+            }
           }
         });
       });
@@ -2965,20 +3065,26 @@ class CadenceAppView extends obsidian.ItemView {
           });
         } else if (f.key === 'owner' || f.key === 'assigned') {
           this._renderOwnerLinks(td, val, false);
-        } else if (f.key === 'company') {
-          this._renderEntityLinks(td, val, 'company');
-        } else if (f.key === 'partner') {
-          this._renderEntityLinks(td, val, 'partner');
-        } else if (f.key === 'contact' || f.key === 'contacts' || f.key === 'with') {
-          this._renderEntityLinks(td, val, 'contact');
-        } else if (f.key === 'related') {
-          this._renderEntityLinks(td, val, 'project');
-        } else if (f.key === 'stage' && val) {
-          const span = td.createSpan({ cls: `cad-pill cad-pill-${val.toLowerCase()}`, text: formatted });
-          span.style.fontSize = '10px';
-          span.style.padding = '2px 6px';
         } else {
-          td.setText(formatted || '—');
+          const sugSrc = f.suggestionSource || getFieldSuggestionSource(f);
+          if (f.type === 'multitext' && sugSrc && sugSrc !== 'none' && sugSrc !== 'tags') {
+            const targetSrc = sugSrc === 'history' ? 'folder:Cadence/Shared' : sugSrc;
+            this._renderEntityLinks(td, val, targetSrc);
+          } else if (f.key === 'company') {
+            this._renderEntityLinks(td, val, 'company');
+          } else if (f.key === 'partner') {
+            this._renderEntityLinks(td, val, 'partner');
+          } else if (f.key === 'contact' || f.key === 'contacts' || f.key === 'with') {
+            this._renderEntityLinks(td, val, 'contact');
+          } else if (f.key === 'related') {
+            this._renderEntityLinks(td, val, 'project');
+          } else if (f.key === 'stage' && val) {
+            const span = td.createSpan({ cls: `cad-pill cad-pill-${val.toLowerCase()}`, text: formatted });
+            span.style.fontSize = '10px';
+            span.style.padding = '2px 6px';
+          } else {
+            td.setText(formatted || '—');
+          }
         }
       });
     });
@@ -4121,14 +4227,28 @@ class CadenceAppView extends obsidian.ItemView {
     if (prefix) parent.createSpan({ text: prefix });
     items.forEach((item, idx) => {
       if (idx > 0) parent.createSpan({ text: ', ' });
-      const link = parent.createEl('a', { text: item.display, cls: `cad-${targetEntityKey}-link` });
+
+      let resolvedKey = targetEntityKey;
+      if (targetEntityKey && targetEntityKey.startsWith('folder:')) {
+        const folderPath = targetEntityKey.slice('folder:'.length).replace(/\/+$/, '').toLowerCase();
+        const matchedKey = Object.keys(ENTITIES).find(k => ENTITIES[k].folder.replace(/\/+$/, '').toLowerCase() === folderPath);
+        if (matchedKey) {
+          resolvedKey = matchedKey;
+        }
+      }
+
+      const link = parent.createEl('a', { text: item.display, cls: `cad-${resolvedKey}-link` });
       link.style.textDecoration = 'underline';
       link.style.cursor = 'pointer';
       link.addEventListener('click', (ev) => {
         ev.stopPropagation();
         const targetFile = this.app.vault.getMarkdownFiles().find(f => f.basename.toLowerCase() === item.target.toLowerCase());
         if (targetFile) {
-          this.openEntityDetail(targetEntityKey, targetFile);
+          if (ENTITIES[resolvedKey]) {
+            this.openEntityDetail(resolvedKey, targetFile);
+          } else {
+            this.app.workspace.openLinkText(targetFile.path, '', false);
+          }
         } else {
           this.app.workspace.openLinkText(item.target, '', false);
         }
@@ -7079,6 +7199,7 @@ class CadenceSettingTab extends obsidian.PluginSettingTab {
       const table = propEditorDiv.createEl('table', { cls: 'cad-prop-table' });
       const thead = table.createEl('thead');
       const headerRow = thead.createEl('tr');
+      headerRow.createEl('th', { text: '', cls: 'cad-prop-drag-header' });
       headerRow.createEl('th', { text: 'Label (Display name)' });
       headerRow.createEl('th', { text: 'Technical Key (Frontmatter)' });
       headerRow.createEl('th', { text: 'Type' });
@@ -7091,8 +7212,8 @@ class CadenceSettingTab extends obsidian.PluginSettingTab {
         if (field.primary) return true;
         const k = field.key;
         if (selectedEntityKey === 'project' && (k === 'status' || k === 'priority')) return true;
-        if (selectedEntityKey === 'deal' && (k === 'stage' || k === 'value')) return true;
-        if (selectedEntityKey === 'activity' && k === 'when') return true;
+        if (selectedEntityKey === 'deal' && k === 'stage') return true;
+        if (selectedEntityKey === 'activity' && k === 'type') return true;
         return false;
       };
 
@@ -7130,9 +7251,81 @@ class CadenceSettingTab extends obsidian.PluginSettingTab {
         }
       };
 
+      let draggedIndex = null;
+
       def.fields.forEach((field, index) => {
         const tr = tbody.createEl('tr');
+        tr.addClass('cad-prop-row');
         const locked = isLocked(field);
+
+        // Prepend drag cell / lock cell
+        const tdDrag = tr.createEl('td', { cls: 'cad-prop-drag-cell' });
+        if (locked) {
+          tdDrag.createEl('span', { text: '🔒', cls: 'cad-prop-lock-icon' });
+          tr.addClass('cad-prop-row-locked');
+        } else {
+          tdDrag.createEl('span', { text: '⋮⋮', cls: 'cad-prop-drag-handle' });
+          tr.setAttribute('draggable', 'true');
+          tr.addClass('cad-prop-row-draggable');
+
+          tr.addEventListener('dragstart', (e) => {
+            draggedIndex = index;
+            tr.addClass('cad-drag-active');
+            e.dataTransfer.setData('text/plain', index.toString());
+            e.dataTransfer.effectAllowed = 'move';
+          });
+
+          tr.addEventListener('dragend', () => {
+            tbody.querySelectorAll('.cad-prop-row').forEach(r => {
+              r.removeClass('cad-drag-active');
+              r.removeClass('cad-drag-hover');
+            });
+            draggedIndex = null;
+          });
+        }
+
+        tr.addEventListener('dragover', (e) => {
+          if (draggedIndex !== null && draggedIndex !== index) {
+            e.preventDefault();
+            tr.addClass('cad-drag-hover');
+          }
+        });
+
+        tr.addEventListener('dragleave', () => {
+          tr.removeClass('cad-drag-hover');
+        });
+
+        tr.addEventListener('drop', async (e) => {
+          tr.removeClass('cad-drag-hover');
+          if (draggedIndex === null || draggedIndex === index) return;
+          e.preventDefault();
+
+          // 1. Generate candidate array
+          const candidateFields = [...def.fields];
+          const [draggedItem] = candidateFields.splice(draggedIndex, 1);
+          candidateFields.splice(index, 0, draggedItem);
+
+          // 2. Validate that locked fields have not changed their index
+          let isValid = true;
+          for (let i = 0; i < def.fields.length; i++) {
+            if (isLocked(def.fields[i])) {
+              if (!candidateFields[i] || candidateFields[i].key !== def.fields[i].key) {
+                isValid = false;
+                break;
+              }
+            }
+          }
+
+          if (!isValid) {
+            new obsidian.Notice('Impossible de réordonner : les propriétés verrouillées (🔒) doivent conserver leur position initiale.');
+            return;
+          }
+
+          // 3. Save new order
+          def.fields = candidateFields;
+          await saveAndSync();
+          renderPropEditor();
+        });
 
         // 1. Label Input
         const tdLabel = tr.createEl('td');
@@ -7598,6 +7791,19 @@ class CadencePlugin extends obsidian.Plugin {
     if (this.settings.openOnStartup) {
       this.app.workspace.onLayoutReady(() => this.openApp('home'));
     }
+
+    // ─── Contact-Project Sync ───
+    this._syncInProgress = false;
+    this.registerEvent(
+      this.app.metadataCache.on('changed', async (file) => {
+        await this.syncContactProjectRelationships(file);
+      })
+    );
+    this.registerEvent(
+      this.app.vault.on('delete', async (file) => {
+        await this.handleProjectDeletion(file);
+      })
+    );
   }
 
   /* ── Quick capture API ── */
@@ -7788,7 +7994,19 @@ class CadencePlugin extends obsidian.Plugin {
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const loadedData = await this.loadData() || {};
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
+    
+    // Deep default customEntities if missing or empty
+    if (!this.settings.customEntities) {
+      this.settings.customEntities = {};
+    }
+    for (const [entityKey, defaultFields] of Object.entries(DEFAULT_SETTINGS.customEntities)) {
+      if (!this.settings.customEntities[entityKey] || this.settings.customEntities[entityKey].length === 0) {
+        this.settings.customEntities[entityKey] = JSON.parse(JSON.stringify(defaultFields));
+      }
+    }
+
     CURRENT_CURRENCY = this.settings.currency || 'USD';
     if (this.settings.customEntities) {
       for (const [entityKey, customFields] of Object.entries(this.settings.customEntities)) {
@@ -7798,6 +8016,561 @@ class CadencePlugin extends obsidian.Plugin {
       }
     }
   }
+
+  async syncContactProjectRelationships(changedFile) {
+    if (this._syncInProgress) return;
+    if (!changedFile || !changedFile.path.toLowerCase().endsWith('.md')) return;
+
+    try {
+      this._syncInProgress = true;
+
+      // 1. Get all contact files and project files
+      const contactFiles = listEntityFiles(this.app, 'contact');
+      const projectFiles = listEntityFiles(this.app, 'project');
+
+      const contactMap = new Map();
+      for (const f of contactFiles) {
+        contactMap.set(f.basename.toLowerCase(), f);
+      }
+
+      const projectMap = new Map();
+      for (const f of projectFiles) {
+        projectMap.set(f.basename.toLowerCase(), f);
+      }
+
+      // Helper to extract names from frontmatter values
+      const extractEntitiesFromValue = (value) => {
+        if (value == null) return [];
+        const results = [];
+        const processStr = (str) => {
+          str = String(str).trim();
+          if (!str) return;
+          if (str.includes('[[')) {
+            const regex = /\[\[(.*?)\]\]/g;
+            let match;
+            while ((match = regex.exec(str)) !== null) {
+              let target = match[1].trim();
+              if (target.includes('|')) {
+                target = target.split('|')[0].trim();
+              }
+              if (target) results.push(target);
+            }
+          } else if (str.includes(',')) {
+            str.split(',').forEach(s => {
+              const item = s.trim();
+              if (item) results.push(item);
+            });
+          } else {
+            results.push(str);
+          }
+        };
+        if (Array.isArray(value)) {
+          value.forEach(val => processStr(val));
+        } else {
+          processStr(value);
+        }
+        return results;
+      };
+
+      const isContactField = (key, ek) => {
+        if (['owner', 'contact', 'contacts', 'with', 'assigned'].includes(key.toLowerCase())) return true;
+        if (ek && ENTITIES[ek]) {
+          const fdef = ENTITIES[ek].fields.find(field => field.key === key);
+          if (fdef) {
+            const sug = fdef.suggestionSource || getFieldSuggestionSource(fdef);
+            if (sug === 'contact' || sug === 'folder:Cadence/Contacts') return true;
+          }
+        }
+        return false;
+      };
+
+      const isProjectField = (key, ek) => {
+        if (['project', 'projects', 'related'].includes(key.toLowerCase())) return true;
+        if (ek && ENTITIES[ek]) {
+          const fdef = ENTITIES[ek].fields.find(field => field.key === key);
+          if (fdef) {
+            const sug = fdef.suggestionSource || getFieldSuggestionSource(fdef);
+            if (sug === 'project' || sug === 'folder:Cadence/Projects') return true;
+          }
+        }
+        return false;
+      };
+
+      const changedEntityKey = entityKeyFromFile(this.app, changedFile);
+
+      if (changedEntityKey === 'contact') {
+        const contactLower = changedFile.basename.toLowerCase();
+        const contactCache = this.app.metadataCache.getFileCache(changedFile) || {};
+        const contactFm = contactCache.frontmatter || {};
+        const existingProjectsVal = contactFm.project;
+        const currentProjectsOfContact = new Set(
+          extractEntitiesFromValue(existingProjectsVal).map(p => p.toLowerCase())
+        );
+
+        // Auto-create any projects in contact sheet that do not exist yet
+        for (const p of currentProjectsOfContact) {
+          if (!projectMap.has(p)) {
+            try {
+              const allFiles = this.app.vault.getMarkdownFiles();
+              const originalName = allFiles.find(f => f.basename.toLowerCase() === p)?.basename || (p.charAt(0).toUpperCase() + p.slice(1));
+              const projectFile = await createEntity(this.app, 'project', originalName);
+              projectMap.set(p, projectFile);
+              new obsidian.Notice(`Fiche projet créée automatiquement pour "${originalName}".`);
+            } catch (e) {
+              console.error(`Cadence: Failed to auto-create project ${p}`, e);
+            }
+          }
+        }
+
+        // For each project in the vault, check if they should be linked
+        for (const [projectLower, projectFile] of projectMap.entries()) {
+          const projectCache = this.app.metadataCache.getFileCache(projectFile) || {};
+          const projectFm = projectCache.frontmatter || {};
+
+          const projectContacts = [];
+          for (const [key, val] of Object.entries(projectFm)) {
+            if (key === 'type') continue;
+            if (isContactField(key, 'project')) {
+              projectContacts.push(...extractEntitiesFromValue(val));
+            }
+          }
+          const projectContactsLower = new Set(projectContacts.map(c => c.toLowerCase()));
+          const listsContact = projectContactsLower.has(contactLower);
+          const contactListsProject = currentProjectsOfContact.has(projectLower);
+
+          if (contactListsProject && !listsContact) {
+            // User manually added the project to the contact sheet!
+            await this.app.fileManager.processFrontMatter(projectFile, (pfm) => {
+              const currentVal = pfm.owner;
+              const currentOwners = extractEntitiesFromValue(currentVal);
+              if (!currentOwners.some(o => o.toLowerCase() === contactLower)) {
+                currentOwners.push(changedFile.basename);
+                if (currentOwners.length === 1) {
+                  pfm.owner = `[[${currentOwners[0]}]]`;
+                } else {
+                  pfm.owner = currentOwners.map(o => `[[${o}]]`);
+                }
+              }
+            });
+            new obsidian.Notice(`Lien automatique : Contact "${changedFile.basename}" associé au projet "${projectFile.basename}" (propriétaire).`);
+          } else if (!contactListsProject && listsContact) {
+            // User manually removed the project from the contact sheet!
+            let removedAny = false;
+            await this.app.fileManager.processFrontMatter(projectFile, (pfm) => {
+              for (const [key, val] of Object.entries(pfm)) {
+                if (isContactField(key, 'project')) {
+                  const currentContacts = extractEntitiesFromValue(val);
+                  const newContacts = currentContacts.filter(c => c.toLowerCase() !== contactLower);
+                  if (newContacts.length !== currentContacts.length) {
+                    removedAny = true;
+                    if (newContacts.length === 0) {
+                      delete pfm[key];
+                    } else if (newContacts.length === 1) {
+                      pfm[key] = `[[${newContacts[0]}]]`;
+                    } else {
+                      pfm[key] = newContacts.map(c => `[[${c}]]`);
+                    }
+                  }
+                }
+              }
+            });
+            if (removedAny) {
+              new obsidian.Notice(`Lien automatique : Contact "${changedFile.basename}" dissocié du projet "${projectFile.basename}".`);
+            }
+          }
+        }
+      }
+      else if (changedEntityKey === 'project') {
+        const projectLower = changedFile.basename.toLowerCase();
+        const projectCache = this.app.metadataCache.getFileCache(changedFile) || {};
+        const projectFm = projectCache.frontmatter || {};
+
+        const projectContacts = [];
+        for (const [key, val] of Object.entries(projectFm)) {
+          if (key === 'type') continue;
+          if (isContactField(key, 'project')) {
+            projectContacts.push(...extractEntitiesFromValue(val));
+          }
+        }
+        const currentContactsOfProject = new Set(projectContacts.map(c => c.toLowerCase()));
+
+        // Auto-create any contacts in project sheet that do not exist yet
+        for (const c of currentContactsOfProject) {
+          if (!contactMap.has(c)) {
+            try {
+              const allFiles = this.app.vault.getMarkdownFiles();
+              const originalName = allFiles.find(f => f.basename.toLowerCase() === c)?.basename || (c.charAt(0).toUpperCase() + c.slice(1));
+              const contactFile = await createEntity(this.app, 'contact', originalName);
+              contactMap.set(c, contactFile);
+              new obsidian.Notice(`Fiche contact créée automatiquement pour "${originalName}".`);
+            } catch (e) {
+              console.error(`Cadence: Failed to auto-create contact ${c}`, e);
+            }
+          }
+        }
+
+        // For each contact in the vault, check if they should be linked
+        for (const [contactLower, contactFile] of contactMap.entries()) {
+          const contactCache = this.app.metadataCache.getFileCache(contactFile) || {};
+          const contactFm = contactCache.frontmatter || {};
+          const existingProjectsVal = contactFm.project;
+          const contactProjects = extractEntitiesFromValue(existingProjectsVal);
+          const listsProject = contactProjects.some(p => p.toLowerCase() === projectLower);
+          const projectListsContact = currentContactsOfProject.has(contactLower);
+
+          if (projectListsContact && !listsProject) {
+            // User manually added contact to project sheet!
+            await this.app.fileManager.processFrontMatter(contactFile, (cfm) => {
+              const currentProjects = extractEntitiesFromValue(cfm.project);
+              if (!currentProjects.some(p => p.toLowerCase() === projectLower)) {
+                currentProjects.push(changedFile.basename);
+                if (currentProjects.length === 1) {
+                  cfm.project = `[[${currentProjects[0]}]]`;
+                } else {
+                  cfm.project = currentProjects.map(p => `[[${p}]]`);
+                }
+              }
+            });
+            new obsidian.Notice(`Lien automatique : Projet "${changedFile.basename}" associé au contact "${contactFile.basename}".`);
+          } else if (!projectListsContact && listsProject) {
+            // User removed contact from project sheet! Check if there is any other note listing both.
+            let hasOtherSource = false;
+            const allFiles = this.app.vault.getMarkdownFiles();
+            for (const f of allFiles) {
+              if (f.path === changedFile.path || f.path === contactFile.path) continue;
+              const cache = this.app.metadataCache.getFileCache(f);
+              if (!cache || !cache.frontmatter) continue;
+              const fm = cache.frontmatter;
+
+              const fEntityKey = entityKeyFromFile(this.app, f);
+              const foundContacts = new Set();
+              const foundProjects = new Set();
+
+              if (fEntityKey === 'contact') {
+                foundContacts.add(f.basename.toLowerCase());
+              } else if (fEntityKey === 'project') {
+                foundProjects.add(f.basename.toLowerCase());
+              }
+
+              for (const [key, val] of Object.entries(fm)) {
+                if (key === 'type') continue;
+                const extracted = extractEntitiesFromValue(val);
+                for (const name of extracted) {
+                  if (!name) continue;
+                  const nameLower = name.toLowerCase();
+                  if (isContactField(key, fEntityKey) || contactMap.has(nameLower)) {
+                    foundContacts.add(nameLower);
+                  }
+                  if (isProjectField(key, fEntityKey) || projectMap.has(nameLower)) {
+                    foundProjects.add(nameLower);
+                  }
+                }
+              }
+
+              if (foundContacts.has(contactLower) && foundProjects.has(projectLower)) {
+                hasOtherSource = true;
+                break;
+              }
+            }
+
+            if (!hasOtherSource) {
+              await this.app.fileManager.processFrontMatter(contactFile, (cfm) => {
+                const currentProjects = extractEntitiesFromValue(cfm.project);
+                const newProjects = currentProjects.filter(p => p.toLowerCase() !== projectLower);
+                if (newProjects.length === 0) {
+                  delete cfm.project;
+                } else if (newProjects.length === 1) {
+                  cfm.project = `[[${newProjects[0]}]]`;
+                } else {
+                  cfm.project = newProjects.map(p => `[[${p}]]`);
+                }
+              });
+              new obsidian.Notice(`Lien automatique : Projet "${changedFile.basename}" dissocié du contact "${contactFile.basename}".`);
+            }
+          }
+        }
+      }
+      else {
+        // Vault-wide scan to build the set of valid contact-project links.
+        // We exclude Contact sheets as relationship sources to prevent self-reinforcing loops.
+        const validLinks = new Set(); // "contact_lowercase|project_lowercase"
+
+        const allFiles = this.app.vault.getMarkdownFiles();
+        for (const f of allFiles) {
+          const fEntityKey = entityKeyFromFile(this.app, f);
+          if (fEntityKey === 'contact') continue;
+
+          const cache = this.app.metadataCache.getFileCache(f);
+          if (!cache || !cache.frontmatter) continue;
+          const fm = cache.frontmatter;
+
+          const foundContacts = new Set();
+          const foundProjects = new Set();
+
+          if (fEntityKey === 'project') {
+            foundProjects.add(f.basename.toLowerCase());
+          }
+
+          for (const [key, val] of Object.entries(fm)) {
+            if (key === 'type') continue;
+            const extracted = extractEntitiesFromValue(val);
+            for (const name of extracted) {
+              if (!name) continue;
+              const nameLower = name.toLowerCase();
+              if (isContactField(key, fEntityKey) || contactMap.has(nameLower)) {
+                foundContacts.add(nameLower);
+              }
+              if (isProjectField(key, fEntityKey) || projectMap.has(nameLower)) {
+                foundProjects.add(nameLower);
+              }
+            }
+          }
+
+          if (foundContacts.size > 0 && foundProjects.size > 0) {
+            for (const c of foundContacts) {
+              for (const p of foundProjects) {
+                validLinks.add(`${c}|${p}`);
+              }
+            }
+          }
+        }
+
+        // Auto-create any referenced Contacts or Projects that do not exist yet
+        for (const link of validLinks) {
+          const [c, p] = link.split('|');
+
+          let contactFile = contactMap.get(c);
+          if (!contactFile) {
+            try {
+              const originalName = allFiles.find(f => f.basename.toLowerCase() === c)?.basename || (c.charAt(0).toUpperCase() + c.slice(1));
+              contactFile = await createEntity(this.app, 'contact', originalName);
+              contactMap.set(c, contactFile);
+              new obsidian.Notice(`Fiche contact créée automatiquement pour "${originalName}".`);
+            } catch (e) {
+              console.error(`Cadence: Failed to auto-create contact ${c}`, e);
+            }
+          }
+
+          let projectFile = projectMap.get(p);
+          if (!projectFile) {
+            try {
+              const originalName = allFiles.find(f => f.basename.toLowerCase() === p)?.basename || (p.charAt(0).toUpperCase() + p.slice(1));
+              projectFile = await createEntity(this.app, 'project', originalName);
+              projectMap.set(p, projectFile);
+              new obsidian.Notice(`Fiche projet créée automatiquement pour "${originalName}".`);
+            } catch (e) {
+              console.error(`Cadence: Failed to auto-create project ${p}`, e);
+            }
+          }
+        }
+
+        // Sync all Contacts according to validLinks
+        for (const [contactLower, contactFile] of contactMap.entries()) {
+          const contactCache = this.app.metadataCache.getFileCache(contactFile) || {};
+          const contactFm = contactCache.frontmatter || {};
+          const existingProjectsVal = contactFm.project;
+          const existingProjects = extractEntitiesFromValue(existingProjectsVal);
+
+          const projectNamesToLink = new Set();
+          for (const link of validLinks) {
+            const [c, p] = link.split('|');
+            if (c === contactLower) {
+              const pFile = projectMap.get(p);
+              if (pFile) {
+                projectNamesToLink.add(pFile.basename);
+              }
+            }
+          }
+
+          const existingLower = existingProjects.map(p => p.toLowerCase());
+          const targetLower = Array.from(projectNamesToLink).map(p => p.toLowerCase());
+
+          let needsUpdate = false;
+          for (const p of existingLower) {
+            if (!targetLower.includes(p)) {
+              needsUpdate = true;
+              break;
+            }
+          }
+          for (const p of targetLower) {
+            if (!existingLower.includes(p)) {
+              needsUpdate = true;
+              break;
+            }
+          }
+
+          if (needsUpdate) {
+            const sortedProjects = Array.from(projectNamesToLink);
+            const formattedVal = sortedProjects.length === 0
+              ? null
+              : (sortedProjects.length === 1
+                  ? `[[${sortedProjects[0]}]]`
+                  : sortedProjects.map(p => `[[${p}]]`)
+                );
+
+            await this.app.fileManager.processFrontMatter(contactFile, (cfm) => {
+              if (formattedVal === null) {
+                delete cfm.project;
+              } else {
+                cfm.project = formattedVal;
+              }
+            });
+
+            const added = sortedProjects.filter(p => !existingProjects.some(ep => ep.toLowerCase() === p.toLowerCase()));
+            const removed = existingProjects.filter(ep => !sortedProjects.some(p => p.toLowerCase() === ep.toLowerCase()));
+
+            if (added.length > 0) {
+              new obsidian.Notice(`Lien automatique : Projet "${added.join(', ')}" associé à "${contactFile.basename}".`);
+            }
+            if (removed.length > 0) {
+              new obsidian.Notice(`Lien automatique : Projet "${removed.join(', ')}" dissocié de "${contactFile.basename}".`);
+            }
+          }
+        }
+
+        // Sync all Projects according to validLinks
+        for (const [projectLower, projectFile] of projectMap.entries()) {
+          const projectCache = this.app.metadataCache.getFileCache(projectFile) || {};
+          const projectFm = projectCache.frontmatter || {};
+          const existingOwners = extractEntitiesFromValue(projectFm.owner);
+
+          const contactsToLink = new Set();
+          for (const link of validLinks) {
+            const [c, p] = link.split('|');
+            if (p === projectLower) {
+              const cFile = contactMap.get(c);
+              if (cFile) {
+                contactsToLink.add(cFile.basename);
+              }
+            }
+          }
+
+          const existingLower = existingOwners.map(c => c.toLowerCase());
+          const targetLower = Array.from(contactsToLink).map(c => c.toLowerCase());
+
+          let needsUpdate = false;
+          for (const c of existingLower) {
+            if (!targetLower.includes(c)) {
+              needsUpdate = true;
+              break;
+            }
+          }
+          for (const c of targetLower) {
+            if (!existingLower.includes(c)) {
+              needsUpdate = true;
+              break;
+            }
+          }
+
+          if (needsUpdate) {
+            const sortedContacts = Array.from(contactsToLink);
+            const formattedVal = sortedContacts.length === 0
+              ? null
+              : (sortedContacts.length === 1
+                  ? `[[${sortedContacts[0]}]]`
+                  : sortedContacts.map(c => `[[${c}]]`)
+                );
+
+            await this.app.fileManager.processFrontMatter(projectFile, (pfm) => {
+              if (formattedVal === null) {
+                delete pfm.owner;
+              } else {
+                pfm.owner = formattedVal;
+              }
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Cadence: Error in syncContactProjectRelationships', e);
+    } finally {
+      this._syncInProgress = false;
+    }
+  }
+
+  async handleProjectDeletion(file) {
+    if (this._syncInProgress) return;
+    if (!file || !file.path || !file.path.toLowerCase().endsWith('.md')) return;
+
+    // Check if the deleted file was inside the Projects folder
+    const projectFolder = ENTITIES.project ? ENTITIES.project.folder : 'Cadence/Projects';
+    if (!file.path.startsWith(projectFolder + '/')) return;
+
+    const projectName = file.basename;
+    if (!projectName) return;
+
+    try {
+      this._syncInProgress = true;
+
+      // Load all contact files
+      const contactFiles = listEntityFiles(this.app, 'contact');
+
+      // Helper to extract names
+      const extractEntitiesFromValue = (value) => {
+        if (value == null) return [];
+        const results = [];
+        const processStr = (str) => {
+          str = String(str).trim();
+          if (!str) return;
+          if (str.includes('[[')) {
+            const regex = /\[\[(.*?)\]\]/g;
+            let match;
+            while ((match = regex.exec(str)) !== null) {
+              let target = match[1].trim();
+              if (target.includes('|')) {
+                target = target.split('|')[0].trim();
+              }
+              if (target) results.push(target);
+            }
+          } else if (str.includes(',')) {
+            str.split(',').forEach(s => {
+              const item = s.trim();
+              if (item) results.push(item);
+            });
+          } else {
+            results.push(str);
+          }
+        };
+        if (Array.isArray(value)) {
+          value.forEach(val => processStr(val));
+        } else {
+          processStr(value);
+        }
+        return results;
+      };
+
+      for (const contactFile of contactFiles) {
+        const contactCache = this.app.metadataCache.getFileCache(contactFile) || {};
+        const contactFm = contactCache.frontmatter || {};
+        const existingProjectsVal = contactFm.project;
+        if (!existingProjectsVal) continue;
+
+        const existingProjectNames = extractEntitiesFromValue(existingProjectsVal);
+        const hasProject = existingProjectNames.some(p => p.toLowerCase() === projectName.toLowerCase());
+
+        if (hasProject) {
+          const remainingProjects = existingProjectNames.filter(p => p.toLowerCase() !== projectName.toLowerCase());
+          
+          await this.app.fileManager.processFrontMatter(contactFile, (cfm) => {
+            if (remainingProjects.length === 0) {
+              delete cfm.project;
+            } else if (remainingProjects.length === 1) {
+              cfm.project = `[[${remainingProjects[0]}]]`;
+            } else {
+              cfm.project = remainingProjects.map(p => `[[${p}]]`);
+            }
+          });
+
+          new obsidian.Notice(`Lien automatique : Projet "${projectName}" supprimé du contact "${contactFile.basename}".`);
+        }
+      }
+    } catch (e) {
+      console.error('Cadence: Error in handleProjectDeletion', e);
+    } finally {
+      this._syncInProgress = false;
+    }
+  }
+
   async saveSettings() {
     await this.saveData(this.settings);
     CURRENT_CURRENCY = this.settings.currency || 'USD';
