@@ -32,6 +32,7 @@ const NAV_GROUPS = [
   {
     id: 'projects', label: 'Projects', module: 'projects',
     items: [
+      { id: 'projects.dashboard', label: 'Dashboard', icon: 'layout-grid', module: 'projects', desc: 'Projects Dashboard — high-level stats, status Kanban, priority Kanban, and customizable analytical widgets.' },
       { id: 'projects.projects', label: 'Projects', icon: 'folder-kanban', module: 'projects', desc: 'Active projects with milestones, owners, statuses — kanban over project notes.' },
     ],
   },
@@ -256,7 +257,7 @@ function entityKeyFromFile(app, file) {
 const BUILT_SURFACES = new Set([
   'home',
   'planner.inbox', 'planner.today', 'planner.calendar',
-  'projects.projects',
+  'projects.dashboard', 'projects.projects',
   'crm.dashboard', 'crm.pipeline', 'crm.contacts', 'crm.companies', 'crm.activities',
   'prm.partners', 'prm.registrations', 'prm.commissions', 'prm.leads', 'prm.certifications', 'prm.analytics',
   'workflow.sequences',
@@ -287,8 +288,12 @@ const DEFAULT_SETTINGS = {
   reminders: [],
   customPages: [],
   pageLayouts: {},
+  pageKanbanGroupBy: {},
   cadenceApiUrl: '',
   cadenceApiToken: '',
+  projectDashboardWidgets: [],
+  crmDashboardWidgets: [],
+  prmDashboardWidgets: [],
   customEntities: {
     project: [
       { key: 'name', label: 'Name', primary: true, type: 'text' },
@@ -1873,7 +1878,7 @@ class CadenceEntityCreateModal extends obsidian.Modal {
 
         const f = this.def.fields.find(fd => fd.key === key);
         const suggestionSource = getFieldSuggestionSource(f);
-        const isWikilink = suggestionSource !== 'none' && suggestionSource !== 'tags';
+        const isWikilink = suggestionSource !== 'none' && suggestionSource !== 'tags' && suggestionSource !== 'history';
         const isEntityRef = ['owner', 'assigned', 'company', 'contact', 'contacts', 'partner', 'with', 'related'].includes(key) || isWikilink;
         const isListField = type === 'tags' || type === 'multitext' || (f && f.isList) || ['domain', 'industry', 'role', 'tags'].includes(key) || isEntityRef;
 
@@ -1996,6 +2001,103 @@ class CadencePromptModal extends obsidian.Modal {
   }
 }
 
+class CadenceWidgetCreateModal extends obsidian.Modal {
+  constructor(app, entityKey, onSubmit) {
+    super(app);
+    // If only two args were passed, onSubmit is the second arg
+    if (typeof entityKey === 'function') {
+      this.onSubmit = entityKey;
+      this.entityKey = 'project';
+    } else {
+      this.entityKey = entityKey || 'project';
+      this.onSubmit = onSubmit;
+    }
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass('cad-prompt-modal');
+    contentEl.createEl('h3', { text: 'Add Custom Chart Widget' });
+
+    // 1. Title
+    contentEl.createEl('label', { text: 'Chart Title:', style: 'display: block; font-weight: 500; font-size: 0.85em; margin-bottom: 4px; margin-top: 12px;' });
+    const inputTitle = contentEl.createEl('input', { type: 'text', placeholder: `e.g. ${this.entityKey.toUpperCase()} by Group` });
+    inputTitle.style.width = '100%';
+    inputTitle.style.padding = '6px 8px';
+
+    // 2. Property to group by
+    const entityLabel = ENTITIES[this.entityKey] ? (ENTITIES[this.entityKey].plural || this.entityKey) : this.entityKey;
+    contentEl.createEl('label', { text: `Group ${entityLabel.toUpperCase()} by Property:`, style: 'display: block; font-weight: 500; font-size: 0.85em; margin-bottom: 4px; margin-top: 12px;' });
+    const selectProp = contentEl.createEl('select');
+    selectProp.style.width = '100%';
+    selectProp.style.padding = '6px 8px';
+    selectProp.style.background = 'var(--background-primary)';
+    selectProp.style.color = 'var(--text-normal)';
+    selectProp.style.border = '1px solid var(--border-color)';
+    selectProp.style.borderRadius = '4px';
+    
+    const fields = ENTITIES[this.entityKey] ? (ENTITIES[this.entityKey].fields || []) : [];
+    fields.forEach(f => {
+      if (f.primary) return;
+      selectProp.createEl('option', { value: f.key, text: `${f.label} (${f.key})` });
+    });
+
+    // 3. Chart Style
+    contentEl.createEl('label', { text: 'Chart Style:', style: 'display: block; font-weight: 500; font-size: 0.85em; margin-bottom: 4px; margin-top: 12px;' });
+    const selectStyle = contentEl.createEl('select');
+    selectStyle.style.width = '100%';
+    selectStyle.style.padding = '6px 8px';
+    selectStyle.style.background = 'var(--background-primary)';
+    selectStyle.style.color = 'var(--text-normal)';
+    selectStyle.style.border = '1px solid var(--border-color)';
+    selectStyle.style.borderRadius = '4px';
+    
+    [
+      { value: 'donut', text: 'Donut Chart 🍩' },
+      { value: 'bar', text: 'Horizontal Bar Chart 📊' },
+      { value: 'kpi', text: 'KPI Cards Grid 🗃️' },
+      { value: 'list', text: 'Simple List 📋' }
+    ].forEach(opt => {
+      selectStyle.createEl('option', { value: opt.value, text: opt.text });
+    });
+
+    const submit = () => {
+      const titleVal = inputTitle.value.trim();
+      const propVal = selectProp.value;
+      const styleVal = selectStyle.value;
+      
+      if (!titleVal) {
+        new obsidian.Notice('Please enter a chart title.');
+        inputTitle.focus();
+        return;
+      }
+      
+      this.onSubmit({
+        id: `widget.${Date.now()}`,
+        title: titleVal,
+        groupBy: propVal,
+        style: styleVal
+      });
+      this.close();
+    };
+
+    // 4. Buttons
+    const row = contentEl.createDiv();
+    row.style.display = 'flex';
+    row.style.justifyContent = 'flex-end';
+    row.style.gap = '8px';
+    row.style.marginTop = '18px';
+    
+    const cancel = row.createEl('button', { text: 'Cancel' });
+    cancel.addEventListener('click', () => this.close());
+    
+    const ok = row.createEl('button', { text: 'Create Widget', cls: 'mod-cta' });
+    ok.addEventListener('click', submit);
+
+    setTimeout(() => inputTitle.focus(), 0);
+  }
+}
+
 /* ─────────── The unified Cadence app view ─────────── */
 class CadenceAppView extends obsidian.ItemView {
   constructor(leaf, plugin) {
@@ -2072,21 +2174,34 @@ class CadenceAppView extends obsidian.ItemView {
     const def = ENTITIES[entityKey];
     if (!def) return { groupBy: 'status', groups: ['Active', 'Done'] };
     
-    let groupBy = 'status';
-    if (entityKey === 'deal') groupBy = 'stage';
-    else if (entityKey === 'activity') groupBy = 'type';
+    let groupBy = this.plugin.settings.pageKanbanGroupBy?.[entityKey];
     
-    const f = def.fields.find(field => field.key === groupBy);
+    if (!groupBy) {
+      const fallbackField = def.fields.find(field => !field.primary && ['enum', 'text'].includes(field.type));
+      groupBy = fallbackField ? fallbackField.key : 'status';
+      if (entityKey === 'deal') groupBy = 'stage';
+      else if (entityKey === 'activity') groupBy = 'type';
+    }
+    
+    let f = def.fields.find(field => field.key === groupBy);
     let groups = f ? (f.options || []) : [];
     
     if (!groups.length) {
-      const enumField = def.fields.find(field => field.type === 'enum');
-      if (enumField) {
-        groupBy = enumField.key;
-        groups = enumField.options || [];
-      } else {
-        groupBy = 'status';
-        groups = ['Active', 'Completed'];
+      const allFiles = listEntities(this.app, entityKey);
+      const uniqueVals = new Set();
+      allFiles.forEach(e => {
+        const val = entityValue(e, groupBy, def);
+        if (val) {
+          const parts = Array.isArray(val) ? val : String(val).split(',');
+          parts.forEach(v => {
+            const clean = String(v).replace(/^\[\[|\]\]$/g, '').trim();
+            if (clean) uniqueVals.add(clean);
+          });
+        }
+      });
+      groups = Array.from(uniqueVals);
+      if (!groups.length) {
+        groups = ['To Do', 'In Progress', 'Done'];
       }
     }
     return { groupBy, groups };
@@ -2355,6 +2470,7 @@ class CadenceAppView extends obsidian.ItemView {
       'planner.inbox': () => this.renderInbox(content),
       'planner.today': () => this.renderTodayPane(content),
       'planner.calendar': () => this.renderPlannerPane(content),
+      'projects.dashboard': () => this.renderProjectsDashboard(content),
       'projects.projects': () => this.renderEntityList(content, 'project'),
       'crm.dashboard': () => this.renderDashboard(content),
       'crm.pipeline': () => this.renderEntityList(content, 'deal'),
@@ -2502,6 +2618,36 @@ class CadenceAppView extends obsidian.ItemView {
     });
     searchInput.style.width = '100%';
     searchInput.style.margin = '0';
+    
+    // Render Kanban GroupBy Selector in the Controls bar
+    if (layout === 'kanban') {
+      const kanbanFields = def.fields.filter(field => !field.primary && ['enum', 'text', 'multitext', 'tags'].includes(field.type));
+      if (kanbanFields.length > 0) {
+        const groupSelectWrap = controls.createDiv({ style: 'display: inline-flex; align-items: center; gap: 6px; margin-left: auto;' });
+        groupSelectWrap.createSpan({ text: 'Group columns by:', style: 'font-size: 0.85em; color: var(--text-muted); font-weight: 600;' });
+        const groupSelect = groupSelectWrap.createEl('select', { cls: 'cad-prop-input' });
+        groupSelect.style.padding = '6px 10px';
+        groupSelect.style.height = 'auto';
+        groupSelect.style.width = 'auto';
+        groupSelect.style.background = 'var(--background-secondary)';
+        groupSelect.style.color = 'var(--text-normal)';
+        groupSelect.style.border = '1px solid var(--border-color)';
+        groupSelect.style.borderRadius = '6px';
+        
+        kanbanFields.forEach(f => {
+          const optEl = groupSelect.createEl('option', { value: f.key, text: f.label });
+          const currentParams = this.getEntityKanbanParams(entityKey);
+          if (currentParams.groupBy === f.key) optEl.selected = true;
+        });
+        
+        groupSelect.addEventListener('change', async () => {
+          if (!this.plugin.settings.pageKanbanGroupBy) this.plugin.settings.pageKanbanGroupBy = {};
+          this.plugin.settings.pageKanbanGroupBy[entityKey] = groupSelect.value;
+          await this.plugin.saveSettings();
+          this.render();
+        });
+      }
+    }
 
     // Dynamic Filters based on fields
     const filterableKeys = def.fields
@@ -2699,7 +2845,7 @@ class CadenceAppView extends obsidian.ItemView {
                 this._renderOwnerLinks(td, val, false);
               } else {
                 const sugSrc = f.suggestionSource || getFieldSuggestionSource(f);
-                if (f.type === 'multitext' && sugSrc && sugSrc !== 'none' && sugSrc !== 'tags') {
+                if (f.type === 'multitext' && sugSrc && sugSrc !== 'none' && sugSrc !== 'tags' && sugSrc !== 'history') {
                   const targetSrc = sugSrc === 'history' ? 'folder:Cadence/Shared' : sugSrc;
                   this._renderEntityLinks(td, val, targetSrc);
                 } else if (f.key === 'company') {
@@ -2730,7 +2876,7 @@ class CadenceAppView extends obsidian.ItemView {
               const cleanVals = val.map(v => String(v).replace(/^\[\[|\]\]$/g, '').trim().toLowerCase());
               return cleanVals.includes(stage.toLowerCase());
             }
-            return String(val || '').toLowerCase() === stage.toLowerCase();
+            return String(val || '').replace(/^\[\[|\]\]$/g, '').trim().toLowerCase() === stage.toLowerCase();
           });
           
           const col = board.createDiv({ cls: 'cad-kanban-col' });
@@ -2765,7 +2911,16 @@ class CadenceAppView extends obsidian.ItemView {
             const file = this.app.vault.getAbstractFileByPath(path);
             if (!file || !(file instanceof obsidian.TFile)) return;
             try {
-              await this.app.fileManager.processFrontMatter(file, (fm) => { fm[groupBy] = (groupBy === 'stage' || groupBy === 'status') ? [stage] : stage; });
+              await this.app.fileManager.processFrontMatter(file, (fm) => { 
+                const fDef = def.fields.find(fd => fd.key === groupBy);
+                const isList = fDef && (fDef.type === 'multitext' || fDef.type === 'tags' || fDef.isList === true);
+                const isLink = fDef && fDef.suggestionSource && fDef.suggestionSource !== 'none' && fDef.suggestionSource !== 'tags' && fDef.suggestionSource !== 'history';
+                if (isList) {
+                  fm[groupBy] = isLink ? [`[[${stage}]]`] : [stage];
+                } else {
+                  fm[groupBy] = isLink ? `[[${stage}]]` : stage;
+                }
+              });
               new obsidian.Notice(`Moved to ${stage}`);
             } catch (e) {
               new obsidian.Notice(`Failed to move: ${e.message}`);
@@ -2903,7 +3058,8 @@ class CadenceAppView extends obsidian.ItemView {
                   fieldDiv.style.marginBottom = '2px';
                   fieldDiv.createSpan({ text: `${f.label}: `, style: 'font-weight: 500; color: var(--text-muted);' });
                   
-                  if (f.key === 'company' || f.key === 'contact' || f.key === 'partner' || f.key === 'owner') {
+                  const isLinkProperty = f.key === 'company' || f.key === 'contact' || f.key === 'partner' || f.key === 'owner' || f.key === 'project' || (f.suggestionSource && f.suggestionSource.startsWith('folder:'));
+                  if (isLinkProperty) {
                     const links = parseLinkValues(val);
                     links.forEach((link, lidx) => {
                       if (lidx > 0) fieldDiv.createSpan({ text: ', ' });
@@ -2914,7 +3070,14 @@ class CadenceAppView extends obsidian.ItemView {
                         ev.preventDefault();
                         ev.stopPropagation();
                         const targetFile = this.app.vault.getMarkdownFiles().find(f => f.basename.toLowerCase() === link.target.toLowerCase());
-                        const relatedKey = f.key === 'owner' ? 'contact' : f.key;
+                        
+                        let relatedKey = f.key === 'owner' ? 'contact' : f.key;
+                        if (f.suggestionSource && f.suggestionSource.startsWith('folder:')) {
+                          const folder = f.suggestionSource.replace('folder:', '').split('/').pop().toLowerCase();
+                          const found = Object.keys(ENTITIES).find(k => ENTITIES[k].folder.toLowerCase().endsWith(folder) || ENTITIES[k].plural.toLowerCase() === folder);
+                          if (found) relatedKey = found;
+                        }
+                        
                         if (targetFile) this.openEntityDetail(relatedKey, targetFile);
                         else this.app.workspace.openLinkText(link.target, '', false);
                       });
@@ -3094,7 +3257,7 @@ class CadenceAppView extends obsidian.ItemView {
         if (isChips) {
           const isEntitySrc = ENTITIES[suggestionSource] != null;
           const isFolderSrc = suggestionSource && suggestionSource.startsWith('folder:');
-          const isPlainChip = ['tags', 'none'].includes(suggestionSource);
+          const isPlainChip = ['tags', 'none', 'history'].includes(suggestionSource);
           const isList = fieldType === 'tags' || fieldType === 'multitext' || f.isList === true || f.key === 'tags' || ['owner', 'assigned', 'contacts', 'domain', 'industry', 'role', 'with', 'related'].includes(f.key);
 
           let targetEntityKey = isEntitySrc ? suggestionSource : null;
@@ -3443,7 +3606,7 @@ class CadenceAppView extends obsidian.ItemView {
           this._renderOwnerLinks(td, val, false);
         } else {
           const sugSrc = f.suggestionSource || getFieldSuggestionSource(f);
-          if (f.type === 'multitext' && sugSrc && sugSrc !== 'none' && sugSrc !== 'tags') {
+          if (f.type === 'multitext' && sugSrc && sugSrc !== 'none' && sugSrc !== 'tags' && sugSrc !== 'history') {
             const targetSrc = sugSrc === 'history' ? 'folder:Cadence/Shared' : sugSrc;
             this._renderEntityLinks(td, val, targetSrc);
           } else if (f.key === 'company') {
@@ -3526,7 +3689,7 @@ class CadenceAppView extends obsidian.ItemView {
       if (isChips) {
         const isEntitySrc2 = ENTITIES[suggestionSource] != null;
         const isFolderSrc2 = suggestionSource && suggestionSource.startsWith('folder:');
-        const isPlainChip = ['tags', 'none'].includes(suggestionSource);
+        const isPlainChip = ['tags', 'none', 'history'].includes(suggestionSource);
         const isList = fieldType === 'tags' || fieldType === 'multitext' || f.isList === true || ['owner', 'contacts', 'domain', 'industry', 'role', 'with', 'related'].includes(key);
         let targetEntityKey = isEntitySrc2 ? suggestionSource : null;
         const customFolderPath = isFolderSrc2 ? suggestionSource.slice('folder:'.length) : null;
@@ -4024,7 +4187,7 @@ class CadenceAppView extends obsidian.ItemView {
       if (isChips) {
         const isEntitySrc = ENTITIES[suggestionSource] != null;
         const isFolderSrc = suggestionSource && suggestionSource.startsWith('folder:');
-        const isPlainChip = ['tags', 'none'].includes(suggestionSource);
+        const isPlainChip = ['tags', 'none', 'history'].includes(suggestionSource);
         const isList = fieldType === 'tags' || fieldType === 'multitext' || f.isList === true || ['owner', 'contacts', 'domain', 'industry', 'role', 'with', 'related'].includes(key);
         let targetEntityKey = isEntitySrc ? suggestionSource : null;
         const customFolderPath = isFolderSrc ? suggestionSource.slice('folder:'.length) : null;
@@ -5681,6 +5844,544 @@ class CadenceAppView extends obsidian.ItemView {
     });
   }
 
+  _drawDonutChart(data) {
+    const total = data.reduce((sum, item) => sum + item.count, 0);
+    if (total === 0) return `<div class="cad-empty" style="text-align: center; padding: 16px;">No data</div>`;
+
+    const r = 50;
+    const circ = 2 * Math.PI * r;
+    let currentOffset = 0;
+    
+    const colors = ['#38bdf8', '#34d399', '#f43f5e', '#a855f7', '#f97316', '#06b6d4', '#eab308'];
+    
+    let svgContent = '';
+    let legendContent = '<div class="cad-donut-legend" style="display: flex; flex-direction: column; gap: 6px; flex: 1;">';
+    
+    data.forEach((item, index) => {
+      const pct = item.count / total;
+      const color = colors[index % colors.length];
+      const strokeLength = pct * circ;
+      const strokeOffset = -currentOffset;
+      
+      svgContent += `
+        <circle cx="70" cy="70" r="${r}" 
+          fill="transparent" 
+          stroke="${color}" 
+          stroke-width="12" 
+          stroke-dasharray="${strokeLength} ${circ}" 
+          stroke-dashoffset="${strokeOffset}" 
+          transform="rotate(-90 70 70)"
+          class="cad-donut-segment"
+        />
+      `;
+      
+      legendContent += `
+        <div class="cad-donut-legend-item" style="display: flex; align-items: center; gap: 8px; font-size: 0.85em;">
+          <span class="cad-donut-legend-color" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; flex-shrink: 0;"></span>
+          <span class="cad-donut-legend-label" style="flex: 1; color: var(--text-normal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">${item.label}</span>
+          <span class="cad-donut-legend-count" style="font-weight: 700; color: var(--text-muted);">${item.count} (${Math.round(pct * 100)}%)</span>
+        </div>
+      `;
+      
+      currentOffset += strokeLength;
+    });
+    
+    legendContent += '</div>';
+
+    return `
+      <div class="cad-donut-chart-container" style="display: flex; align-items: center; justify-content: center; gap: 24px; padding: 12px;">
+        <div class="cad-donut-svg-wrap" style="position: relative; width: 140px; height: 140px; flex-shrink: 0;">
+          <svg width="140" height="140" viewBox="0 0 140 140">
+            <circle cx="70" cy="70" r="${r}" fill="transparent" stroke="var(--background-secondary)" stroke-width="12" />
+            ${svgContent}
+          </svg>
+          <div class="cad-donut-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <span class="cad-donut-center-total" style="font-size: 1.25rem; font-weight: 700; color: var(--text-normal);">${total}</span>
+            <span class="cad-donut-center-label" style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total</span>
+          </div>
+        </div>
+        ${legendContent}
+      </div>
+    `;
+  }
+
+  _drawBarChart(data) {
+    const total = data.reduce((sum, item) => sum + item.count, 0);
+    if (total === 0) return `<div class="cad-empty" style="text-align: center; padding: 16px;">No data</div>`;
+    
+    const maxCount = Math.max(1, ...data.map(item => item.count));
+    const colors = ['#38bdf8', '#34d399', '#f43f5e', '#a855f7', '#f97316', '#06b6d4', '#eab308'];
+    
+    let bars = '<div class="cad-stage-bars" style="padding: 12px 0; display: flex; flex-direction: column; gap: 8px;">';
+    data.forEach((item, index) => {
+      const color = colors[index % colors.length];
+      const pct = (item.count / maxCount) * 100;
+      bars += `
+        <div class="cad-stage-bar-row" style="display: flex; align-items: center; margin-bottom: 0; padding: 4px 8px; border-radius: 6px;">
+          <div class="cad-stage-bar-name" style="width: 120px; font-weight: 500; font-size: 0.85em; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.label}</div>
+          <div class="cad-stage-bar-count" style="margin-right: 12px; font-weight: 700; color: var(--text-muted); font-size: 0.85em;">${item.count}</div>
+          <div class="cad-stage-bar" style="flex: 1; background: var(--background-secondary); border-radius: 4px; height: 10px; overflow: hidden; position: relative;">
+            <div class="cad-stage-bar-fill" style="width: ${pct}%; background-color: ${color}; height: 100%; border-radius: 4px; transition: width 0.3s ease;"></div>
+          </div>
+          <div class="cad-stage-bar-value" style="margin-left: 12px; font-size: 0.8em; color: var(--text-faint); font-weight: 600; min-width: 36px; text-align: right;">${Math.round((item.count / total) * 100)}%</div>
+        </div>
+      `;
+    });
+    bars += '</div>';
+    return bars;
+  }
+
+  _drawKpiGrid(data) {
+    if (data.length === 0) return `<div class="cad-empty" style="text-align: center; padding: 16px;">No data</div>`;
+    const total = data.reduce((sum, item) => sum + item.count, 0);
+    const colors = ['sky', 'emerald', 'rose', 'purple', 'warn', 'mint'];
+    let cards = '<div class="cad-stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; padding: 12px 0; margin: 0;">';
+    data.forEach((item, index) => {
+      const accent = colors[index % colors.length];
+      const pct = total === 0 ? 0 : Math.round((item.count / total) * 100);
+      cards += `
+        <div class="cad-stat-card" data-accent="${accent}" style="padding: 10px 12px; display: flex; flex-direction: column; justify-content: center; min-height: 70px;">
+          <div class="cad-stat-label" style="font-size: 0.65rem; letter-spacing: 0.08em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${item.label.toUpperCase()}</div>
+          <div class="cad-stat-value" style="font-size: 1.25rem; font-weight: 800; margin: 2px 0; line-height: 1;">${item.count}</div>
+          <div class="cad-stat-sub" style="font-size: 9px; margin-top: 0;">${pct}% of total</div>
+        </div>
+      `;
+    });
+    cards += '</div>';
+    return cards;
+  }
+
+  _drawSimpleList(data) {
+    if (data.length === 0) return `<div class="cad-empty" style="text-align: center; padding: 16px;">No data</div>`;
+    let list = '<div class="cad-simple-list" style="display: flex; flex-direction: column; gap: 6px; padding: 8px 0;">';
+    data.forEach((item) => {
+      list += `
+        <div class="cad-list-item" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: var(--background-secondary); border-radius: 6px; font-size: 0.9em;">
+          <span style="font-weight: 500; color: var(--text-normal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px;">${item.label}</span>
+          <span style="font-weight: 700; background: var(--background-primary); padding: 1px 8px; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-muted);">${item.count}</span>
+        </div>
+      `;
+    });
+    list += '</div>';
+    return list;
+  }
+
+  /* ── Projects Dashboard ─────────────────── */
+  async renderProjectsDashboard(root) {
+    root.addClass('cadence-dashboard');
+    root.addClass('cadence-list'); // Reuses list styles
+    
+    // Retrieve projects
+    const def = ENTITIES.project;
+    if (!def) {
+      this.renderComingSoon(root, this._resolveSurface(this.mode));
+      return;
+    }
+    const allProjects = listEntities(this.app, 'project');
+    
+    // ─── Header ────────────────────────────────────────
+    this._renderPageHeader(root, 'Projects Dashboard', 'Status · priority · custom analytics', (right) => {
+      const newProj = right.createEl('button', { cls: 'cad-btn primary', text: '+ New Project' });
+      newProj.addEventListener('click', () => this._createEntityFromPrompt('project'));
+    });
+    
+    // ─── Stats strip ───────────────────────────────────
+    const statusField = def.fields.find(f => f.key === 'status') || { options: ['active', 'on_hold', 'backlog', 'done', 'cancelled'] };
+    const statuses = statusField.options || ['active', 'on_hold', 'backlog', 'done', 'cancelled'];
+    
+    const grid = root.createDiv({ cls: 'cad-stat-grid', style: 'padding-bottom: 24px;' });
+    
+    // 1. Total projects card
+    const totalCard = grid.createDiv({ 
+      cls: 'cad-stat-card', 
+      style: 'padding: 20px; display: flex; flex-direction: column; justify-content: center; min-height: 280px; margin: 0; position: relative;' 
+    });
+    totalCard.dataset.accent = 'sky';
+    totalCard.createDiv({ cls: 'cad-stat-label', text: 'TOTAL PROJECTS', style: 'font-weight: 700; letter-spacing: 0.12em;' });
+    totalCard.createDiv({ cls: 'cad-stat-value', text: String(allProjects.length), style: 'font-size: 3rem; font-weight: 800; margin-top: 12px; line-height: 1;' });
+    totalCard.createDiv({ cls: 'cad-stat-sub', text: 'Across all active and custom statuses', style: 'margin-top: 12px; font-size: 0.85em; color: var(--text-muted);' });
+    
+    // 2. Dynamic status cards
+    const statusAccents = {
+      active: 'emerald',
+      done: 'mint',
+      cancelled: 'rose',
+      backlog: 'purple',
+      on_hold: 'warn',
+      'on-hold': 'warn'
+    };
+    const fallbackAccents = ['sky', 'emerald', 'rose', 'purple', 'warn', 'mint'];
+    
+    statuses.forEach((status, index) => {
+      const items = allProjects.filter(p => String(entityValue(p, 'status', def)).toLowerCase() === status.toLowerCase());
+      const accent = statusAccents[status.toLowerCase().replace('-', '_')] || fallbackAccents[index % fallbackAccents.length];
+      
+      const colCard = grid.createDiv({ 
+        cls: 'cad-stat-card', 
+        style: 'padding: 20px; display: flex; flex-direction: column; min-height: 280px; margin: 0; position: relative;' 
+      });
+      colCard.dataset.accent = accent;
+      colCard.dataset.stage = status; // For drag & drop target
+      
+      // Header info
+      colCard.createDiv({ 
+        cls: 'cad-stat-label', 
+        text: `${status.replace(/_/g, ' ').toUpperCase()} PROJECTS`,
+        style: 'font-weight: 700; letter-spacing: 0.12em;' 
+      });
+      colCard.createDiv({ 
+        cls: 'cad-stat-value', 
+        text: String(items.length), 
+        style: 'font-size: 2.25rem; font-weight: 800; margin-top: 4px;' 
+      });
+      
+      // List area inside card
+      const list = colCard.createDiv({ 
+        style: 'margin-top: 16px; flex: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 4px; min-height: 120px;' 
+      });
+      
+      // Drag and drop listeners on the status card itself
+      colCard.addEventListener('dragover', (ev) => {
+        ev.preventDefault();
+        try { ev.dataTransfer.dropEffect = 'move'; } catch (_) { }
+        colCard.style.boxShadow = '0 0 0 2px var(--interactive-accent)';
+      });
+      colCard.addEventListener('dragleave', (ev) => {
+        if (!colCard.contains(ev.relatedTarget)) {
+          colCard.style.boxShadow = '';
+        }
+      });
+      colCard.addEventListener('drop', async (ev) => {
+        ev.preventDefault();
+        colCard.style.boxShadow = '';
+        const path = ev.dataTransfer.getData('text/cadence-entity');
+        const fromStage = ev.dataTransfer.getData('text/cadence-stage-status');
+        if (!path || fromStage === status) return;
+        const file = this.app.vault.getAbstractFileByPath(path);
+        if (!file || !(file instanceof obsidian.TFile)) return;
+        try {
+          await this.app.fileManager.processFrontMatter(file, (fm) => { 
+            fm['status'] = status; 
+          });
+          new obsidian.Notice(`Project status set to ${status}`);
+          this.render();
+        } catch (e) {
+          new obsidian.Notice(`Failed to change status: ${e.message}`);
+        }
+      });
+      
+      if (!items.length) {
+        list.createDiv({ cls: 'cad-empty', text: 'No projects', style: 'text-align: center; color: var(--text-faint); margin-top: 32px;' });
+      } else {
+        const isMobile = !!(obsidian.Platform && obsidian.Platform.isMobile);
+        items.forEach((e) => {
+          // Project Row inside card list
+          const row = list.createDiv({ 
+            cls: 'cad-dash-row', 
+            style: 'display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--background-secondary); border-radius: 6px; cursor: pointer; border: 1px solid var(--border-color);' 
+          });
+          
+          // Left content: Project Name
+          const nameEl = row.createDiv({ style: 'font-weight: 500; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;' });
+          nameEl.setText(entityValue(e, 'name', def) || e.basename);
+          
+          // Right content: Priority Pill
+          const priorityVal = entityValue(e, 'priority', def);
+          if (priorityVal) {
+            const pill = row.createDiv({ 
+              cls: `cad-pill cad-pill-${String(priorityVal).toLowerCase().replace(/\s+/g, '_')}`,
+              text: String(priorityVal).replace(/_/g, ' ')
+            });
+            pill.style.fontSize = '0.7em';
+            pill.style.padding = '1px 6px';
+          }
+          
+          row.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            this.openEntityDetail('project', e.file);
+          });
+          
+          if (!isMobile) {
+            row.draggable = true;
+            row.addEventListener('dragstart', (ev) => {
+              row.style.opacity = '0.4';
+              try {
+                ev.dataTransfer.effectAllowed = 'move';
+                ev.dataTransfer.setData('text/cadence-entity', e.file.path);
+                ev.dataTransfer.setData('text/cadence-stage-status', status);
+                ev.dataTransfer.setData('text/plain', `[[${e.file.basename}]]`);
+              } catch (_) { }
+            });
+            row.addEventListener('dragend', () => {
+              row.style.opacity = '';
+            });
+          }
+        });
+      }
+    });
+
+    // ─── Priority Board Section ────────────────────────
+    root.createDiv({ cls: 'cad-section-label-lg', text: 'PROJECTS BY PRIORITY' });
+    
+    const boardWrap = root.createDiv({ 
+      cls: 'cad-stat-grid',
+      style: 'padding-top: 0; padding-bottom: 24px;' 
+    });
+    
+    const renderBoard = () => {
+      boardWrap.empty();
+      
+      const priorityField = def.fields.find(field => field.key === 'priority') || { options: ['low', 'medium', 'high'] };
+      const priorities = priorityField.options || ['low', 'medium', 'high'];
+      
+      const priorityAccents = {
+        low: 'sky',
+        medium: 'warn',
+        high: 'rose'
+      };
+      
+      priorities.forEach((prio) => {
+        const items = allProjects.filter(p => String(entityValue(p, 'priority', def)).toLowerCase() === prio.toLowerCase());
+        const accent = priorityAccents[prio.toLowerCase()] || 'sky';
+        
+        // Large Priority Stat Card Stack
+        const colCard = boardWrap.createDiv({ 
+          cls: 'cad-stat-card', 
+          style: 'padding: 20px; display: flex; flex-direction: column; min-height: 280px; margin: 0; position: relative;' 
+        });
+        colCard.dataset.accent = accent;
+        colCard.dataset.stage = prio; // For drag & drop target
+        
+        // Header info
+        colCard.createDiv({ 
+          cls: 'cad-stat-label', 
+          text: `${prio.toUpperCase()} PRIORITY`,
+          style: 'font-weight: 700; letter-spacing: 0.12em;' 
+        });
+        colCard.createDiv({ 
+          cls: 'cad-stat-value', 
+          text: String(items.length), 
+          style: 'font-size: 2.25rem; font-weight: 800; margin-top: 4px;' 
+        });
+        
+        // List area inside card
+        const list = colCard.createDiv({ 
+          style: 'margin-top: 16px; flex: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 4px; min-height: 120px;' 
+        });
+        
+        // Drag and drop listeners on the priority card itself
+        colCard.addEventListener('dragover', (ev) => {
+          ev.preventDefault();
+          try { ev.dataTransfer.dropEffect = 'move'; } catch (_) { }
+          colCard.style.boxShadow = '0 0 0 2px var(--interactive-accent)';
+        });
+        colCard.addEventListener('dragleave', (ev) => {
+          if (!colCard.contains(ev.relatedTarget)) {
+            colCard.style.boxShadow = '';
+          }
+        });
+        colCard.addEventListener('drop', async (ev) => {
+          ev.preventDefault();
+          colCard.style.boxShadow = '';
+          const path = ev.dataTransfer.getData('text/cadence-entity');
+          const fromStage = ev.dataTransfer.getData('text/cadence-stage');
+          if (!path || fromStage === prio) return;
+          const file = this.app.vault.getAbstractFileByPath(path);
+          if (!file || !(file instanceof obsidian.TFile)) return;
+          try {
+            await this.app.fileManager.processFrontMatter(file, (fm) => { 
+              fm['priority'] = prio; 
+            });
+            new obsidian.Notice(`Project priority set to ${prio}`);
+            this.render();
+          } catch (e) {
+            new obsidian.Notice(`Failed to change priority: ${e.message}`);
+          }
+        });
+        
+        if (!items.length) {
+          list.createDiv({ cls: 'cad-empty', text: 'No projects', style: 'text-align: center; color: var(--text-faint); margin-top: 32px;' });
+        } else {
+          const isMobile = !!(obsidian.Platform && obsidian.Platform.isMobile);
+          items.forEach((e) => {
+            // Project Row inside card list
+            const row = list.createDiv({ 
+              cls: 'cad-dash-row', 
+              style: 'display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--background-secondary); border-radius: 6px; cursor: pointer; border: 1px solid var(--border-color);' 
+            });
+            
+            // Left content: Project Name
+            const nameEl = row.createDiv({ style: 'font-weight: 500; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;' });
+            nameEl.setText(entityValue(e, 'name', def) || e.basename);
+            
+            // Right content: Status Pill
+            const statusVal = entityValue(e, 'status', def);
+            if (statusVal) {
+              const pill = row.createDiv({ 
+                cls: `cad-pill cad-pill-${String(statusVal).toLowerCase().replace(/\s+/g, '_')}`,
+                text: String(statusVal).replace(/_/g, ' ')
+              });
+              pill.style.fontSize = '0.7em';
+              pill.style.padding = '1px 6px';
+            }
+            
+            row.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              this.openEntityDetail('project', e.file);
+            });
+            
+            if (!isMobile) {
+              row.draggable = true;
+              row.addEventListener('dragstart', (ev) => {
+                row.style.opacity = '0.4';
+                try {
+                  ev.dataTransfer.effectAllowed = 'move';
+                  ev.dataTransfer.setData('text/cadence-entity', e.file.path);
+                  ev.dataTransfer.setData('text/cadence-stage', prio);
+                  ev.dataTransfer.setData('text/plain', `[[${e.file.basename}]]`);
+                } catch (_) { }
+              });
+              row.addEventListener('dragend', () => {
+                row.style.opacity = '';
+              });
+            }
+          });
+        }
+      });
+    };
+    renderBoard();
+
+    // ─── Custom Widgets / Charts Section ────────────────
+    const analyticsHeader = root.createDiv({ 
+      style: 'display: flex; justify-content: space-between; align-items: center; padding: 24px 32px 8px 32px; margin-bottom: 16px;' 
+    });
+    const labelEl = analyticsHeader.createEl('span', { 
+      cls: 'cad-section-label-lg', 
+      text: 'ANALYTICS & CHARTS',
+      style: 'padding: 0; margin: 0; display: inline-block;' 
+    });
+    
+    const addWidgetBtn = analyticsHeader.createEl('button', { cls: 'cad-btn primary', text: '+ Add Custom Chart' });
+    
+    const widgetsGrid = root.createDiv({ 
+      cls: 'cad-dash-cols', 
+      style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 24px; padding: 0 32px;' 
+    });
+
+    const renderWidgets = () => {
+      widgetsGrid.empty();
+      
+      const widgets = this.plugin.settings.projectDashboardWidgets || [];
+      if (widgets.length === 0) {
+        const emptyWrap = widgetsGrid.createDiv({ style: 'grid-column: 1 / -1; text-align: center; padding: 32px; background: var(--background-secondary); border-radius: 8px; border: 1px dashed var(--border-color);' });
+        emptyWrap.createDiv({ text: 'No custom charts added yet. Click "+ Add Custom Chart" to create one!', style: 'color: var(--text-muted); font-size: 0.95em;' });
+        return;
+      }
+      
+      widgets.forEach((w) => {
+        const card = widgetsGrid.createDiv({ cls: 'cad-dash-card', style: 'margin: 0; display: flex; flex-direction: column;' });
+        
+        // Card Head
+        const head = card.createDiv({ cls: 'cad-dash-card-head', style: 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;' });
+        const fieldKey = w.groupBy;
+        
+        head.createDiv({ cls: 'cad-dash-card-title', text: w.title.toUpperCase(), style: 'font-weight: 700; font-size: 0.75rem; letter-spacing: 0.12em;' });
+        
+        const actionsWrap = head.createDiv({ style: 'display: flex; gap: 8px; align-items: center;' });
+        
+        // Chart Style Select
+        const styleSelect = actionsWrap.createEl('select', { cls: 'cad-prop-input' });
+        styleSelect.style.padding = '2px 4px';
+        styleSelect.style.fontSize = '0.8em';
+        styleSelect.style.height = 'auto';
+        styleSelect.style.width = 'auto';
+        styleSelect.style.background = 'var(--background-primary)';
+        styleSelect.style.color = 'var(--text-normal)';
+        styleSelect.style.border = '1px solid var(--border-color)';
+        styleSelect.style.borderRadius = '4px';
+        
+        [
+          { value: 'donut', label: '🍩 Donut' },
+          { value: 'bar', label: '📊 Bar' },
+          { value: 'kpi', label: '🗃️ KPI Cards' },
+          { value: 'list', label: '📋 List' }
+        ].forEach(opt => {
+          const o = styleSelect.createEl('option', { value: opt.value, text: opt.label });
+          if (w.style === opt.value) o.selected = true;
+        });
+        
+        styleSelect.addEventListener('change', async () => {
+          w.style = styleSelect.value;
+          await this.plugin.saveSettings();
+          this.render();
+        });
+        
+        // Delete button
+        const delBtn = actionsWrap.createEl('button', { 
+          cls: 'cad-btn', 
+          text: '×', 
+          style: 'color: var(--text-error); padding: 2px 8px; font-weight: bold; border-color: var(--text-error); font-size: 1.1em; height: auto; border-radius: 4px; background: transparent;' 
+        });
+        delBtn.addEventListener('click', async () => {
+          if (!confirm(`Delete chart "${w.title}"?`)) return;
+          this.plugin.settings.projectDashboardWidgets = (this.plugin.settings.projectDashboardWidgets || []).filter(item => item.id !== w.id);
+          await this.plugin.saveSettings();
+          this.render();
+        });
+        
+        const body = card.createDiv({ cls: 'cad-dash-card-body', style: 'flex: 1; min-height: 180px; display: flex; flex-direction: column; justify-content: center; padding: 14px;' });
+        
+        // Calculate chart data for this widget
+        const counts = {};
+        allProjects.forEach(p => {
+          let val = entityValue(p, fieldKey, def);
+          if (Array.isArray(val)) {
+            val.forEach(v => {
+              const clean = String(v).replace(/^\[\[|\]\]$/g, '').trim();
+              if (clean) counts[clean] = (counts[clean] || 0) + 1;
+            });
+          } else {
+            const clean = String(val || '').replace(/^\[\[|\]\]$/g, '').trim();
+            const label = clean || 'Unspecified';
+            counts[label] = (counts[label] || 0) + 1;
+          }
+        });
+        
+        const chartData = Object.entries(counts)
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count);
+        
+        // Draw chart based on style
+        let chartHtml = '';
+        if (w.style === 'donut') {
+          chartHtml = this._drawDonutChart(chartData);
+        } else if (w.style === 'bar') {
+          chartHtml = this._drawBarChart(chartData);
+        } else if (w.style === 'kpi') {
+          chartHtml = this._drawKpiGrid(chartData);
+        } else {
+          chartHtml = this._drawSimpleList(chartData);
+        }
+        
+        body.createDiv().innerHTML = chartHtml;
+      });
+    };
+    
+    // Add custom widget builder listener
+    addWidgetBtn.addEventListener('click', () => {
+      new CadenceWidgetCreateModal(this.app, async (newWidget) => {
+        if (!this.plugin.settings.projectDashboardWidgets) {
+          this.plugin.settings.projectDashboardWidgets = [];
+        }
+        this.plugin.settings.projectDashboardWidgets.push(newWidget);
+        await this.plugin.saveSettings();
+        this.render();
+      }).open();
+    });
+    
+    renderWidgets();
+  }
+
   /* ── CRM Dashboard ──────────────────────── */
   async renderDashboard(root) {
     root.addClass('cadence-dashboard');
@@ -5816,6 +6517,135 @@ class CadenceAppView extends obsidian.ItemView {
     mkMini('CONTACTS', contacts.length, 'warn', 'crm.contacts');
     mkMini('COMPANIES', companies.length, 'sky', 'crm.companies');
     mkMini('PARTNERS', partners.length, 'rose', 'prm.partners');
+    
+    // ─── Custom Widgets / Charts Section ────────────────
+    const analyticsHeader = root.createDiv({ 
+      style: 'display: flex; justify-content: space-between; align-items: center; padding: 24px 32px 8px 32px; margin-bottom: 16px;' 
+    });
+    const labelEl = analyticsHeader.createEl('span', { 
+      cls: 'cad-section-label-lg', 
+      text: 'ANALYTICS & CHARTS',
+      style: 'padding: 0; margin: 0; display: inline-block;' 
+    });
+    
+    const addWidgetBtn = analyticsHeader.createEl('button', { cls: 'cad-btn primary', text: '+ Add Custom Chart' });
+    
+    const widgetsGrid = root.createDiv({ 
+      cls: 'cad-dash-cols', 
+      style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 24px; padding: 0 32px;' 
+    });
+
+    const renderWidgets = () => {
+      widgetsGrid.empty();
+      
+      const widgets = this.plugin.settings.crmDashboardWidgets || [];
+      if (widgets.length === 0) {
+        const emptyWrap = widgetsGrid.createDiv({ style: 'grid-column: 1 / -1; text-align: center; padding: 32px; background: var(--background-secondary); border-radius: 8px; border: 1px dashed var(--border-color);' });
+        emptyWrap.createDiv({ text: 'No custom charts added yet. Click "+ Add Custom Chart" to create one!', style: 'color: var(--text-muted); font-size: 0.95em;' });
+        return;
+      }
+      
+      widgets.forEach((w) => {
+        const card = widgetsGrid.createDiv({ cls: 'cad-dash-card', style: 'margin: 0; display: flex; flex-direction: column;' });
+        
+        // Card Head
+        const head = card.createDiv({ cls: 'cad-dash-card-head', style: 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;' });
+        const fieldKey = w.groupBy;
+        
+        head.createDiv({ cls: 'cad-dash-card-title', text: w.title.toUpperCase(), style: 'font-weight: 700; font-size: 0.75rem; letter-spacing: 0.12em;' });
+        
+        const actionsWrap = head.createDiv({ style: 'display: flex; gap: 8px; align-items: center;' });
+        
+        // Chart Style Select
+        const styleSelect = actionsWrap.createEl('select', { cls: 'cad-prop-input' });
+        styleSelect.style.padding = '2px 4px';
+        styleSelect.style.fontSize = '0.8em';
+        styleSelect.style.height = 'auto';
+        styleSelect.style.width = 'auto';
+        styleSelect.style.background = 'var(--background-primary)';
+        styleSelect.style.color = 'var(--text-normal)';
+        styleSelect.style.border = '1px solid var(--border-color)';
+        styleSelect.style.borderRadius = '4px';
+        
+        [
+          { value: 'donut', label: '🍩 Donut' },
+          { value: 'bar', label: '📊 Bar' },
+          { value: 'kpi', label: '🗃️ KPI Cards' },
+          { value: 'list', label: '📋 List' }
+        ].forEach(opt => {
+          const o = styleSelect.createEl('option', { value: opt.value, text: opt.label });
+          if (w.style === opt.value) o.selected = true;
+        });
+        
+        styleSelect.addEventListener('change', async () => {
+          w.style = styleSelect.value;
+          await this.plugin.saveSettings();
+          this.render();
+        });
+        
+        // Delete button
+        const delBtn = actionsWrap.createEl('button', { 
+          cls: 'cad-btn', 
+          text: '×', 
+          style: 'color: var(--text-error); padding: 2px 8px; font-weight: bold; border-color: var(--text-error); font-size: 1.1em; height: auto; border-radius: 4px; background: transparent;' 
+        });
+        delBtn.addEventListener('click', async () => {
+          if (!confirm(`Delete chart "${w.title}"?`)) return;
+          this.plugin.settings.crmDashboardWidgets = (this.plugin.settings.crmDashboardWidgets || []).filter(item => item.id !== w.id);
+          await this.plugin.saveSettings();
+          this.render();
+        });
+        
+        const body = card.createDiv({ cls: 'cad-dash-card-body', style: 'flex: 1; min-height: 180px; display: flex; flex-direction: column; justify-content: center; padding: 14px;' });
+        
+        // Calculate chart data for this widget
+        const counts = {};
+        allDeals.forEach(p => {
+          let val = entityValue(p, fieldKey, dealDef);
+          if (Array.isArray(val)) {
+            val.forEach(v => {
+              const clean = String(v).replace(/^\[\[|\]\]$/g, '').trim();
+              if (clean) counts[clean] = (counts[clean] || 0) + 1;
+            });
+          } else {
+            const clean = String(val || '').replace(/^\[\[|\]\]$/g, '').trim();
+            const label = clean || 'Unspecified';
+            counts[label] = (counts[label] || 0) + 1;
+          }
+        });
+        
+        const chartData = Object.entries(counts)
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count);
+        
+        // Draw chart based on style
+        let chartHtml = '';
+        if (w.style === 'donut') {
+          chartHtml = this._drawDonutChart(chartData);
+        } else if (w.style === 'bar') {
+          chartHtml = this._drawBarChart(chartData);
+        } else if (w.style === 'kpi') {
+          chartHtml = this._drawKpiGrid(chartData);
+        } else {
+          chartHtml = this._drawSimpleList(chartData);
+        }
+        
+        body.createDiv().innerHTML = chartHtml;
+      });
+    };
+    
+    addWidgetBtn.addEventListener('click', () => {
+      new CadenceWidgetCreateModal(this.app, 'deal', async (newWidget) => {
+        if (!this.plugin.settings.crmDashboardWidgets) {
+          this.plugin.settings.crmDashboardWidgets = [];
+        }
+        this.plugin.settings.crmDashboardWidgets.push(newWidget);
+        await this.plugin.saveSettings();
+        this.render();
+      }).open();
+    });
+    
+    renderWidgets();
   }
 
   /* Reusable list card on the dashboard. */
@@ -6902,6 +7732,135 @@ class CadenceAppView extends obsidian.ItemView {
     const convBar = convWrap.createDiv({ cls: 'cad-proj-progress-bar' });
     const convFill = convBar.createDiv({ cls: 'cad-proj-progress-fill' });
     convFill.style.width = `${conv}%`;
+    
+    // ─── Custom Widgets / Charts Section ────────────────
+    const analyticsHeader = root.createDiv({ 
+      style: 'display: flex; justify-content: space-between; align-items: center; padding: 24px 32px 8px 32px; margin-bottom: 16px;' 
+    });
+    const labelEl = analyticsHeader.createEl('span', { 
+      cls: 'cad-section-label-lg', 
+      text: 'ANALYTICS & CHARTS',
+      style: 'padding: 0; margin: 0; display: inline-block;' 
+    });
+    
+    const addWidgetBtn = analyticsHeader.createEl('button', { cls: 'cad-btn primary', text: '+ Add Custom Chart' });
+    
+    const widgetsGrid = root.createDiv({ 
+      cls: 'cad-dash-cols', 
+      style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 24px; padding: 0 32px;' 
+    });
+
+    const renderWidgets = () => {
+      widgetsGrid.empty();
+      
+      const widgets = this.plugin.settings.prmDashboardWidgets || [];
+      if (widgets.length === 0) {
+        const emptyWrap = widgetsGrid.createDiv({ style: 'grid-column: 1 / -1; text-align: center; padding: 32px; background: var(--background-secondary); border-radius: 8px; border: 1px dashed var(--border-color);' });
+        emptyWrap.createDiv({ text: 'No custom charts added yet. Click "+ Add Custom Chart" to create one!', style: 'color: var(--text-muted); font-size: 0.95em;' });
+        return;
+      }
+      
+      widgets.forEach((w) => {
+        const card = widgetsGrid.createDiv({ cls: 'cad-dash-card', style: 'margin: 0; display: flex; flex-direction: column;' });
+        
+        // Card Head
+        const head = card.createDiv({ cls: 'cad-dash-card-head', style: 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;' });
+        const fieldKey = w.groupBy;
+        
+        head.createDiv({ cls: 'cad-dash-card-title', text: w.title.toUpperCase(), style: 'font-weight: 700; font-size: 0.75rem; letter-spacing: 0.12em;' });
+        
+        const actionsWrap = head.createDiv({ style: 'display: flex; gap: 8px; align-items: center;' });
+        
+        // Chart Style Select
+        const styleSelect = actionsWrap.createEl('select', { cls: 'cad-prop-input' });
+        styleSelect.style.padding = '2px 4px';
+        styleSelect.style.fontSize = '0.8em';
+        styleSelect.style.height = 'auto';
+        styleSelect.style.width = 'auto';
+        styleSelect.style.background = 'var(--background-primary)';
+        styleSelect.style.color = 'var(--text-normal)';
+        styleSelect.style.border = '1px solid var(--border-color)';
+        styleSelect.style.borderRadius = '4px';
+        
+        [
+          { value: 'donut', label: '🍩 Donut' },
+          { value: 'bar', label: '📊 Bar' },
+          { value: 'kpi', label: '🗃️ KPI Cards' },
+          { value: 'list', label: '📋 List' }
+        ].forEach(opt => {
+          const o = styleSelect.createEl('option', { value: opt.value, text: opt.label });
+          if (w.style === opt.value) o.selected = true;
+        });
+        
+        styleSelect.addEventListener('change', async () => {
+          w.style = styleSelect.value;
+          await this.plugin.saveSettings();
+          this.render();
+        });
+        
+        // Delete button
+        const delBtn = actionsWrap.createEl('button', { 
+          cls: 'cad-btn', 
+          text: '×', 
+          style: 'color: var(--text-error); padding: 2px 8px; font-weight: bold; border-color: var(--text-error); font-size: 1.1em; height: auto; border-radius: 4px; background: transparent;' 
+        });
+        delBtn.addEventListener('click', async () => {
+          if (!confirm(`Delete chart "${w.title}"?`)) return;
+          this.plugin.settings.prmDashboardWidgets = (this.plugin.settings.prmDashboardWidgets || []).filter(item => item.id !== w.id);
+          await this.plugin.saveSettings();
+          this.render();
+        });
+        
+        const body = card.createDiv({ cls: 'cad-dash-card-body', style: 'flex: 1; min-height: 180px; display: flex; flex-direction: column; justify-content: center; padding: 14px;' });
+        
+        // Calculate chart data for this widget
+        const counts = {};
+        partners.forEach(p => {
+          let val = entityValue(p, fieldKey, partnerDef);
+          if (Array.isArray(val)) {
+            val.forEach(v => {
+              const clean = String(v).replace(/^\[\[|\]\]$/g, '').trim();
+              if (clean) counts[clean] = (counts[clean] || 0) + 1;
+            });
+          } else {
+            const clean = String(val || '').replace(/^\[\[|\]\]$/g, '').trim();
+            const label = clean || 'Unspecified';
+            counts[label] = (counts[label] || 0) + 1;
+          }
+        });
+        
+        const chartData = Object.entries(counts)
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count);
+        
+        // Draw chart based on style
+        let chartHtml = '';
+        if (w.style === 'donut') {
+          chartHtml = this._drawDonutChart(chartData);
+        } else if (w.style === 'bar') {
+          chartHtml = this._drawBarChart(chartData);
+        } else if (w.style === 'kpi') {
+          chartHtml = this._drawKpiGrid(chartData);
+        } else {
+          chartHtml = this._drawSimpleList(chartData);
+        }
+        
+        body.createDiv().innerHTML = chartHtml;
+      });
+    };
+    
+    addWidgetBtn.addEventListener('click', () => {
+      new CadenceWidgetCreateModal(this.app, 'partner', async (newWidget) => {
+        if (!this.plugin.settings.prmDashboardWidgets) {
+          this.plugin.settings.prmDashboardWidgets = [];
+        }
+        this.plugin.settings.prmDashboardWidgets.push(newWidget);
+        await this.plugin.saveSettings();
+        this.render();
+      }).open();
+    });
+    
+    renderWidgets();
   }
 
   /* ── Team (contacts where role contains "team") ─ */
@@ -7057,7 +8016,7 @@ class CadenceAppView extends obsidian.ItemView {
 
           for (const f of def.fields) {
             const suggestionSource = getFieldSuggestionSource(f);
-            if (suggestionSource !== 'none' && suggestionSource !== 'tags') {
+            if (suggestionSource !== 'none' && suggestionSource !== 'tags' && suggestionSource !== 'history') {
               const key = f.key;
               if (extras[key]) {
                 const rawVal = extras[key];
@@ -8716,6 +9675,26 @@ class CadencePlugin extends obsidian.Plugin {
     }
 
     CURRENT_CURRENCY = this.settings.currency || 'USD';
+
+    // Initialize default project dashboard widgets if empty/missing
+    if (!this.settings.projectDashboardWidgets || this.settings.projectDashboardWidgets.length === 0) {
+      this.settings.projectDashboardWidgets = [
+        { id: 'w1', title: 'Projects by Status', groupBy: 'status', style: 'donut' },
+        { id: 'w2', title: 'Projects by Priority', groupBy: 'priority', style: 'bar' }
+      ];
+    }
+    if (!this.settings.crmDashboardWidgets || this.settings.crmDashboardWidgets.length === 0) {
+      this.settings.crmDashboardWidgets = [
+        { id: 'c1', title: 'Deals by Stage', groupBy: 'stage', style: 'donut' },
+        { id: 'c2', title: 'Deals by Owner', groupBy: 'owner', style: 'bar' }
+      ];
+    }
+    if (!this.settings.prmDashboardWidgets || this.settings.prmDashboardWidgets.length === 0) {
+      this.settings.prmDashboardWidgets = [
+        { id: 'p1', title: 'Partners by Tier', groupBy: 'tier', style: 'donut' },
+        { id: 'p2', title: 'Partners by Status', groupBy: 'status', style: 'bar' }
+      ];
+    }
 
     // Clean up any orphan custom entities that have no matching custom page
     const coreEntityKeys = ['contact', 'company', 'partner', 'registration', 'commission', 'lead', 'certification', 'activity', 'sequence', 'project', 'deal'];
