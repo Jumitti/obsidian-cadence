@@ -122,7 +122,7 @@ Settings → Cadence → **Custom Entities Properties**:
 ### 2. Autocomplete & Suggestion Sources
 List properties (`multitext`) can pull autocomplete suggestions dynamically from:
 * **`folder:Path/To/Folder`** — Dynamically scans the specified vault folder. Suggests existing note basenames (e.g. `folder:Cadence/Contacts` maps contacts).
-* **`history`** — Scans your existing notes to suggest any values previously entered.
+* **`history`** — Scans your existing notes to suggest any values previously entered. Saves values as plain-text lists instead of Obsidian wikilinks.
 * **`tags`** — Pulls tags directly from Obsidian's global cache.
 * **`none`** — Simple custom list inputs without suggestions.
 
@@ -138,6 +138,15 @@ Core relationships (like **Project** ↔ **Contact**) are bidirectionally synchr
 ### 5. Drag-and-Drop Reordering & System Locks
 * **Visual Reordering:** Use the grab handle (`⋮⋮`) to drag-and-drop properties to rearrange their visual layout order inside detail sheets and lists.
 * **System Locks (`🔒`) :** Critical properties required for Cadence's system engines (such as the Primary field, Type, or Status) are secured. Reordering attempts that shift a locked field from its original index are safely rejected to preserve layout integrity.
+
+### 6. Interactive & Configurable Kanban Board Grouping
+* **Dynamic Grouping Selector:** Any Kanban view displays a stylish "Group columns by" selector in the filters bar. You can dynamically group your board columns by any `enum`, `text`, `multitext`, or `tags` property.
+* **On-the-Fly Column Extraction:** When grouping by a list/text property (such as `project`), Cadence scans all entity files to extract and clean unique values (stripping Obsidian brackets) to build your board columns automatically.
+* **Smart Drag-and-Drop Drops:** Moving cards between dynamically grouped columns updates list-based frontmatter properties (handling wikilinks and plain text list items appropriately).
+
+### 7. Custom Dashboards & Analytics Widgets
+* **Cross-Module Analytics:** Custom dashboard charts can be added to the bottom of the **Projects Dashboard**, **CRM Dashboard (Deals)**, and **PRM Dashboard (Partners)**.
+* **Flexible Visualization:** Supports visualizing any property in Donut, Bar, KPI Grid, or Simple List layout, featuring full drag-and-drop status counters and segment alignment.
 
 ---
 
