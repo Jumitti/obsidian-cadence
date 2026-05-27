@@ -1971,3 +1971,63 @@ select.cad-form-input { appearance: auto; padding-right: 28px; }
   background: var(--background-secondary-alt);
   opacity: 0.95;
 }
+
+/* ─────────── Premium Template Tiles ─────────── */
+.cad-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+  padding: 24px 32px;
+}
+.cad-template-tile {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), 
+              box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), 
+              border-color 0.2s ease;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+  overflow: hidden;
+}
+.cad-template-tile:hover {
+  transform: translateY(-4px);
+  border-color: var(--interactive-accent);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.07);
+}
+.cad-template-tile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--interactive-accent);
+  opacity: 0.85;
+}
+.cad-template-tile[data-entity="project"]::before { background: oklch(0.62 0.17 290); }
+.cad-template-tile[data-entity="deal"]::before { background: oklch(0.65 0.14 150); }
+.cad-template-tile[data-entity="contact"]::before { background: oklch(0.6 0.16 220); }
+.cad-template-tile[data-entity="company"]::before { background: oklch(0.55 0.15 30); }
+.cad-template-tile[data-entity="partner"]::before { background: oklch(0.7 0.13 80); }
+.cad-template-tile[data-entity="activity"]::before { background: oklch(0.6 0.18 340); }
+
+.cad-template-tile-icon {
+  font-size: 1.6em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--background-secondary);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.cad-template-tile:hover .cad-template-tile-icon {
+  background: var(--background-modifier-hover);
+  transform: scale(1.05);
+}
+
