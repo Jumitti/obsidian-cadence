@@ -7065,6 +7065,7 @@ priority: normal
       const nextContent = curContent.replace(/\s*$/, '') + `\n\n${header}\n${defaultBody}\n`;
       await this.app.vault.modify(file, nextContent);
       new obsidian.Notice(`Section "${cleanTitle}" added to template.`);
+      await this._propagateTemplateSectionAdd(entityKey, cleanTitle, tag, defaultBody);
       this.render();
     };
 
@@ -7140,6 +7141,7 @@ priority: normal
   /* Helper: render a live H2 section widget inside the template builder,
      with move (▲▼), view-switcher (for cross/chart), and delete (×) controls */
   _renderTemplateSectionWithDelete(parent, file, sections, rawKey, flashSaved, allRawKeys) {
+    const entityKey = file.basename;
     const { cleanLabel, tag } = parseHeaderKey(rawKey);
 
     // Outer wrapper — draggable to support reordering
@@ -7238,7 +7240,16 @@ priority: normal
     delBtn.title = `Remove section "${cleanLabel}" from template`;
     delBtn.addEventListener('click', async (ev) => {
       ev.stopPropagation();
-      if (!confirm(`Remove the section "${cleanLabel}" from this template?`)) return;
+      const usedFiles = await this._getFilesUsingTemplateSection(entityKey, rawKey);
+      if (usedFiles.length > 0) {
+        const fileNames = usedFiles.map(f => f.basename).join(', ');
+        if (!confirm(`Warning: The section "${cleanLabel}" has active content in the following files:\n${fileNames}\n\nAre you sure you want to delete it from the template?`)) {
+          return;
+        }
+      } else {
+        if (!confirm(`Remove the section "${cleanLabel}" from this template?`)) return;
+      }
+      
       const curContent = await this.app.vault.read(file);
       const lines = curContent.split('\n');
       const idx = lines.findIndex(l => l.trim().replace(/^##\s+/, '') === rawKey);
@@ -7249,10 +7260,86 @@ priority: normal
         }
         lines.splice(idx, endIdx - idx);
         await this.app.vault.modify(file, lines.join('\n'));
+        await this._propagateTemplateSectionDelete(entityKey, rawKey);
         new obsidian.Notice(`Section "${cleanLabel}" removed.`);
         this.render();
       }
     });
+  }
+
+  _getEntityFiles(entityKey) {
+    if (entityKey === 'daily') {
+      const folderPath = this.plugin.settings.dailyNoteFolder || 'daily';
+      const folder = this.app.vault.getAbstractFileByPath(folderPath);
+      if (!folder || !folder.children) return [];
+      const out = [];
+      const walk = (node) => {
+        for (const child of node.children) {
+          if (child.children) walk(child);
+          else if (typeof child.path === 'string' && child.path.toLowerCase().endsWith('.md')) {
+            out.push(child);
+          }
+        }
+      };
+      walk(folder);
+      return out;
+    } else {
+      return listEntityFiles(this.app, entityKey);
+    }
+  }
+
+  async _getFilesUsingTemplateSection(entityKey, rawKey) {
+    const files = this._getEntityFiles(entityKey);
+    const used = [];
+    const { cleanLabel } = parseHeaderKey(rawKey);
+    for (const file of files) {
+      const content = await this.app.vault.read(file);
+      const sections = parseH2Sections(content);
+      const matchingKey = Object.keys(sections).find(k => parseHeaderKey(k).cleanLabel.toLowerCase() === cleanLabel.toLowerCase());
+      if (matchingKey) {
+        const body = (sections[matchingKey] || '').trim();
+        if (body && !body.startsWith('_Enter your notes here...') && !body.startsWith('_Company description') && !body.startsWith('_Background, interests') && !body.startsWith('_The outcome we want') && !body.startsWith('- [ ] First task') && !body.startsWith('- [ ] First milestone')) {
+          used.push(file);
+        }
+      }
+    }
+    return used;
+  }
+
+  async _propagateTemplateSectionAdd(entityKey, cleanTitle, tag, defaultBody = '') {
+    const files = this._getEntityFiles(entityKey);
+    const header = `## ${cleanTitle} ${tag}`.trim();
+    for (const file of files) {
+      const content = await this.app.vault.read(file);
+      const sections = parseH2Sections(content);
+      const exists = Object.keys(sections).some(k => parseHeaderKey(k).cleanLabel.toLowerCase() === cleanTitle.toLowerCase());
+      if (!exists) {
+        const nextContent = content.replace(/\s*$/, '') + `\n\n${header}\n${defaultBody}\n`;
+        await this.app.vault.modify(file, nextContent);
+      }
+    }
+  }
+
+  async _propagateTemplateSectionDelete(entityKey, rawKey) {
+    const files = this._getEntityFiles(entityKey);
+    const { cleanLabel } = parseHeaderKey(rawKey);
+    for (const file of files) {
+      const content = await this.app.vault.read(file);
+      const lines = content.split('\n');
+      const idx = lines.findIndex(l => {
+        if (!/^##\s/.test(l)) return false;
+        const key = l.trim().replace(/^##\s+/, '');
+        return parseHeaderKey(key).cleanLabel.toLowerCase() === cleanLabel.toLowerCase();
+      });
+      if (idx !== -1) {
+        let endIdx = lines.length;
+        for (let i = idx + 1; i < lines.length; i++) {
+          if (/^##\s/.test(lines[i])) { endIdx = i; break; }
+        }
+        lines.splice(idx, endIdx - idx);
+        await this.app.vault.modify(file, lines.join('\n'));
+      }
+    }
   }
 
   /* ── Inbox (Planner reminders + captures) ── */
