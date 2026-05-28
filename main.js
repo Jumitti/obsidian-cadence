@@ -508,7 +508,7 @@ async function appendTaskNotesTask(app, text, date = new Date()) {
   const ymdStr = ymd(date);
   const folderPath = "TaskNotes/Tasks";
   await ensureFolderSync(app, folderPath);
-  
+
   const cleanTitle = text.replace(/[\\/:*?"<>|]/g, '').trim();
   let filename = `${folderPath}/${cleanTitle}.md`;
   let file = app.vault.getAbstractFileByPath(filename);
@@ -518,7 +518,7 @@ async function appendTaskNotesTask(app, text, date = new Date()) {
     file = app.vault.getAbstractFileByPath(filename);
     counter++;
   }
-  
+
   const content = `---
 title: ${text}
 status: open
@@ -959,7 +959,7 @@ function stringifyTasks(items) {
 async function readProjectMeta(app, file) {
   const content = await app.vault.read(file);
   const sections = parseH2Sections(content);
-  
+
   // Find any milestone section dynamically
   let milestoneText = '';
   for (const [key, val] of Object.entries(sections)) {
@@ -1024,7 +1024,7 @@ async function createEntity(app, entityKeyOrFolder, rawName) {
   if (isEntity) {
     const templatesFolder = 'Cadence/Templates';
     await ensureFolderSync(app, templatesFolder);
-    
+
     const def = ENTITIES[entityKeyOrFolder];
     const pathsToTry = [
       `${templatesFolder}/${entityKeyOrFolder}.md`,
@@ -2196,7 +2196,7 @@ class CadenceWidgetCreateModal extends obsidian.Modal {
     selectProp.style.color = 'var(--text-normal)';
     selectProp.style.border = '1px solid var(--border-color)';
     selectProp.style.borderRadius = '4px';
-    
+
     const fields = ENTITIES[this.entityKey] ? (ENTITIES[this.entityKey].fields || []) : [];
     fields.forEach(f => {
       if (f.primary) return;
@@ -2212,7 +2212,7 @@ class CadenceWidgetCreateModal extends obsidian.Modal {
     selectStyle.style.color = 'var(--text-normal)';
     selectStyle.style.border = '1px solid var(--border-color)';
     selectStyle.style.borderRadius = '4px';
-    
+
     [
       { value: 'donut', text: 'Donut Chart 🍩' },
       { value: 'bar', text: 'Horizontal Bar Chart 📊' },
@@ -2226,13 +2226,13 @@ class CadenceWidgetCreateModal extends obsidian.Modal {
       const titleVal = inputTitle.value.trim();
       const propVal = selectProp.value;
       const styleVal = selectStyle.value;
-      
+
       if (!titleVal) {
         new obsidian.Notice('Please enter a chart title.');
         inputTitle.focus();
         return;
       }
-      
+
       this.onSubmit({
         id: `widget.${Date.now()}`,
         title: titleVal,
@@ -2248,10 +2248,10 @@ class CadenceWidgetCreateModal extends obsidian.Modal {
     row.style.justifyContent = 'flex-end';
     row.style.gap = '8px';
     row.style.marginTop = '18px';
-    
+
     const cancel = row.createEl('button', { text: 'Cancel' });
     cancel.addEventListener('click', () => this.close());
-    
+
     const ok = row.createEl('button', { text: 'Create Widget', cls: 'mod-cta' });
     ok.addEventListener('click', submit);
 
@@ -2330,7 +2330,7 @@ class CadenceCrossSectionModal extends obsidian.Modal {
       const targetEntity = selectTarget.value;
       const linkField = selectField.value;
       const viewType = selectView.value;
-      
+
       this.onSubmit({
         id: 'xs_' + Math.random().toString(36).slice(2, 10),
         parentEntity: this.parentEntity,
@@ -2346,10 +2346,10 @@ class CadenceCrossSectionModal extends obsidian.Modal {
     row.style.justifyContent = 'flex-end';
     row.style.gap = '8px';
     row.style.marginTop = '18px';
-    
+
     const cancel = row.createEl('button', { text: 'Cancel' });
     cancel.addEventListener('click', () => this.close());
-    
+
     const ok = row.createEl('button', { text: 'Add Section', cls: 'mod-cta' });
     ok.addEventListener('click', submit);
   }
@@ -2531,19 +2531,19 @@ class CadenceAppView extends obsidian.ItemView {
   getEntityKanbanParams(entityKey) {
     const def = ENTITIES[entityKey];
     if (!def) return { groupBy: 'status', groups: ['Active', 'Done'] };
-    
+
     let groupBy = this.plugin.settings.pageKanbanGroupBy?.[entityKey];
-    
+
     if (!groupBy) {
       const fallbackField = def.fields.find(field => !field.primary && ['enum', 'text'].includes(field.type));
       groupBy = fallbackField ? fallbackField.key : 'status';
       if (entityKey === 'deal') groupBy = 'stage';
       else if (entityKey === 'activity') groupBy = 'type';
     }
-    
+
     let f = def.fields.find(field => field.key === groupBy);
     let groups = f ? (f.options || []) : [];
-    
+
     if (!groups.length) {
       const allFiles = listEntities(this.app, entityKey);
       const uniqueVals = new Set();
@@ -2576,7 +2576,7 @@ class CadenceAppView extends obsidian.ItemView {
   _visibleNavGroups() {
     const mods = this.plugin.settings.modules || { crm: true, prm: true, planner: true, projects: true };
     const groups = JSON.parse(JSON.stringify(NAV_GROUPS));
-    
+
     // Inject custom pages
     const customPages = this.plugin.settings.customPages || [];
     customPages.forEach((p) => {
@@ -2949,7 +2949,7 @@ class CadenceAppView extends obsidian.ItemView {
 
     const entities = listEntities(this.app, entityKey);
     const filtered = opts.filter ? entities.filter(opts.filter) : entities;
-    
+
     const mode = this.mode;
     const layout = this.plugin.settings.pageLayouts?.[mode] || (mode === 'projects.projects' ? 'cards' : (mode === 'crm.pipeline' ? 'kanban' : 'table'));
 
@@ -2979,9 +2979,9 @@ class CadenceAppView extends obsidian.ItemView {
         btn.style.background = layout === l.key ? 'var(--background-modifier-border)' : 'transparent';
         btn.style.borderRadius = '4px';
         btn.style.cursor = 'pointer';
-        try { obsidian.setIcon(btn, l.icon); } catch (_) {}
+        try { obsidian.setIcon(btn, l.icon); } catch (_) { }
         btn.title = l.title;
-        
+
         btn.addEventListener('click', async (e) => {
           e.preventDefault();
           if (!this.plugin.settings.pageLayouts) this.plugin.settings.pageLayouts = {};
@@ -3027,7 +3027,7 @@ class CadenceAppView extends obsidian.ItemView {
     });
     searchInput.style.width = '100%';
     searchInput.style.margin = '0';
-    
+
     // Render Kanban GroupBy Selector in the Controls bar
     if (layout === 'kanban') {
       const kanbanFields = def.fields.filter(field => !field.primary && ['enum', 'text', 'multitext', 'tags'].includes(field.type));
@@ -3042,13 +3042,13 @@ class CadenceAppView extends obsidian.ItemView {
         groupSelect.style.color = 'var(--text-normal)';
         groupSelect.style.border = '1px solid var(--border-color)';
         groupSelect.style.borderRadius = '6px';
-        
+
         kanbanFields.forEach(f => {
           const optEl = groupSelect.createEl('option', { value: f.key, text: f.label });
           const currentParams = this.getEntityKanbanParams(entityKey);
           if (currentParams.groupBy === f.key) optEl.selected = true;
         });
-        
+
         groupSelect.addEventListener('change', async () => {
           if (!this.plugin.settings.pageKanbanGroupBy) this.plugin.settings.pageKanbanGroupBy = {};
           this.plugin.settings.pageKanbanGroupBy[entityKey] = groupSelect.value;
@@ -3201,7 +3201,7 @@ class CadenceAppView extends obsidian.ItemView {
         const table = tableWrap.createEl('table', { cls: 'cad-table' });
         const thead = table.createEl('thead');
         const trh = thead.createEl('tr');
-        
+
         const headers = [];
         cols.forEach((f) => {
           const th = trh.createEl('th');
@@ -3243,7 +3243,7 @@ class CadenceAppView extends obsidian.ItemView {
               const primaryField = def.fields.find(fd => fd.primary) || def.fields[0];
               const hasPrimaryCol = cols.some(c => c.key === primaryField.key);
               const isPrimaryCol = hasPrimaryCol ? (f.key === primaryField.key) : (i === 0);
-              
+
               if (isPrimaryCol) {
                 const a = td.createEl('a', { cls: 'cad-row-primary', text: formatted || e.basename });
                 a.addEventListener('click', (ev) => {
@@ -3277,7 +3277,7 @@ class CadenceAppView extends obsidian.ItemView {
         const kanbanParams = this.getEntityKanbanParams(entityKey);
         const { groupBy, groups } = kanbanParams;
         const board = kanbanWrap.createDiv({ cls: 'cad-kanban-board' });
-        
+
         groups.forEach((stage) => {
           const items = displayed.filter((e) => {
             const val = entityValue(e, groupBy, def);
@@ -3287,12 +3287,12 @@ class CadenceAppView extends obsidian.ItemView {
             }
             return String(val || '').replace(/^\[\[|\]\]$/g, '').trim().toLowerCase() === stage.toLowerCase();
           });
-          
+
           const col = board.createDiv({ cls: 'cad-kanban-col' });
           col.dataset.stage = stage;
           const head = col.createDiv({ cls: 'cad-kanban-col-head' });
           head.createDiv({ cls: 'cad-kanban-col-title', text: stage });
-          
+
           const valueField = def.fields.find(f => f.type === 'currency' || f.type === 'number');
           if (valueField) {
             const sum = items.reduce((s, e) => s + (Number(entityValue(e, valueField.key, def)) || 0), 0);
@@ -3320,7 +3320,7 @@ class CadenceAppView extends obsidian.ItemView {
             const file = this.app.vault.getAbstractFileByPath(path);
             if (!file || !(file instanceof obsidian.TFile)) return;
             try {
-              await this.app.fileManager.processFrontMatter(file, (fm) => { 
+              await this.app.fileManager.processFrontMatter(file, (fm) => {
                 const fDef = def.fields.find(fd => fd.key === groupBy);
                 const isList = fDef && (fDef.type === 'multitext' || fDef.type === 'tags' || fDef.isList === true);
                 const isLink = fDef && fDef.suggestionSource && fDef.suggestionSource !== 'none' && fDef.suggestionSource !== 'tags' && fDef.suggestionSource !== 'history';
@@ -3343,16 +3343,16 @@ class CadenceAppView extends obsidian.ItemView {
             items.forEach((e) => {
               const card = list.createDiv({ cls: 'cad-kanban-card' });
               card.dataset.path = e.file.path;
-              
+
               const primaryField = def.fields.find(f => f.primary) || def.fields[0];
               card.createDiv({ cls: 'cad-kanban-card-title', text: entityValue(e, primaryField.key, def) || e.basename });
-              
+
               const meta = card.createDiv({ cls: 'cad-kanban-card-meta' });
               if (valueField) {
                 const val = entityValue(e, valueField.key, def);
                 if (val) meta.createSpan({ text: fmtValue(val, valueField.type) });
               }
-              
+
               const relFields = ['company', 'contact', 'owner', 'assigned'];
               relFields.forEach(rf => {
                 const rfDef = def.fields.find(f => f.key === rf);
@@ -3396,7 +3396,7 @@ class CadenceAppView extends obsidian.ItemView {
       } else if (layout === 'cards') {
         cardsWrap.style.display = 'block';
         const grid = cardsWrap.createDiv({ cls: 'cad-proj-grid' });
-        
+
         if (entityKey === 'project') {
           const projects = await Promise.all(displayed.map(async (e) => {
             const meta = await readProjectMeta(this.app, e.file);
@@ -3440,12 +3440,12 @@ class CadenceAppView extends obsidian.ItemView {
           displayed.forEach((e) => {
             const card = grid.createDiv({ cls: 'cad-proj-card' });
             const head = card.createDiv({ cls: 'cad-proj-card-head' });
-            
+
             const primaryField = def.fields.find(f => f.primary) || def.fields[0];
             const titleText = entityValue(e, primaryField.key, def) || e.basename;
             const title = head.createEl('a', { cls: 'cad-proj-title', text: titleText });
             title.addEventListener('click', (ev) => { ev.preventDefault(); this.openEntityDetail(entityKey, e.file); });
-            
+
             const pillRow = head.createDiv({ cls: 'cad-proj-pills' });
             const statusField = def.fields.find(f => f.key === 'status' || f.key === 'type' || f.key === 'tier') || def.fields.find(f => f.type === 'enum');
             if (statusField) {
@@ -3466,7 +3466,7 @@ class CadenceAppView extends obsidian.ItemView {
                   const fieldDiv = metaRow.createDiv();
                   fieldDiv.style.marginBottom = '2px';
                   fieldDiv.createSpan({ text: `${f.label}: `, style: 'font-weight: 500; color: var(--text-muted);' });
-                  
+
                   const isLinkProperty = f.key === 'company' || f.key === 'contact' || f.key === 'partner' || f.key === 'owner' || f.key === 'project' || (f.suggestionSource && f.suggestionSource.startsWith('folder:'));
                   if (isLinkProperty) {
                     const links = parseLinkValues(val);
@@ -3479,14 +3479,14 @@ class CadenceAppView extends obsidian.ItemView {
                         ev.preventDefault();
                         ev.stopPropagation();
                         const targetFile = this.app.vault.getMarkdownFiles().find(f => f.basename.toLowerCase() === link.target.toLowerCase());
-                        
+
                         let relatedKey = f.key === 'owner' ? 'contact' : f.key;
                         if (f.suggestionSource && f.suggestionSource.startsWith('folder:')) {
                           const folder = f.suggestionSource.replace('folder:', '').split('/').pop().toLowerCase();
                           const found = Object.keys(ENTITIES).find(k => ENTITIES[k].folder.toLowerCase().endsWith(folder) || ENTITIES[k].plural.toLowerCase() === folder);
                           if (found) relatedKey = found;
                         }
-                        
+
                         if (targetFile) this.openEntityDetail(relatedKey, targetFile);
                         else this.app.workspace.openLinkText(link.target, '', false);
                       });
@@ -3976,13 +3976,13 @@ class CadenceAppView extends obsidian.ItemView {
       const sectionsHeader = root.createDiv({ cls: 'cad-section-label-lg', text: 'NOTE SECTIONS' });
       sectionsHeader.style.marginTop = '24px';
       sectionsHeader.style.marginBottom = '12px';
-      
+
       const sectionsGrid = root.createDiv({ cls: 'cad-pd-cols' });
       sectionsGrid.style.display = 'grid';
       sectionsGrid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(350px, 1fr))';
       sectionsGrid.style.gap = '16px';
       sectionsGrid.style.marginBottom = '24px';
-      
+
       sectionKeys.forEach((key) => {
         this._renderDynamicH2Section(sectionsGrid, file, sections, key, flashSaved);
       });
@@ -4450,10 +4450,10 @@ class CadenceAppView extends obsidian.ItemView {
 
     const content = await this.app.vault.read(file);
     const sections = parseH2Sections(content);
-    
+
     const leftKeys = [];
     const rightKeys = [];
-    
+
     Object.keys(sections).forEach((key, idx) => {
       if (idx % 2 === 0) {
         leftKeys.push(key);
@@ -4892,7 +4892,7 @@ class CadenceAppView extends obsidian.ItemView {
 
     const leftKeys = [];
     const rightKeys = [];
-    
+
     Object.keys(meta.sections).forEach((key, idx) => {
       if (idx % 2 === 0) {
         leftKeys.push(key);
@@ -5046,7 +5046,7 @@ class CadenceAppView extends obsidian.ItemView {
   _renderTaskSection(parent, file, tasks, flashSaved, rawKey = 'Tasks') {
     const card = parent.createDiv({ cls: 'cad-pd-card' });
     const head = card.createDiv({ cls: 'cad-pd-card-head' });
-    
+
     let tasksList = tasks;
     let fileTaskNotes = [];
     if (this.plugin.settings.taskManagementSystem === 'tasknotes') {
@@ -5160,7 +5160,7 @@ class CadenceAppView extends obsidian.ItemView {
           cta: 'Ajouter',
         });
         if (!text) return;
-        
+
         const folderPath = "TaskNotes/Tasks";
         await ensureFolderSync(this.app, folderPath);
         const cleanTitle = text.replace(/[\\/:*?"<>|]/g, '').trim();
@@ -5172,7 +5172,7 @@ class CadenceAppView extends obsidian.ItemView {
           existingFile = this.app.vault.getAbstractFileByPath(filename);
           counter++;
         }
-        
+
         const content = `---
 title: ${text}
 status: open
@@ -5209,27 +5209,27 @@ priority: normal
       style: 'margin-left: auto; padding: 4px 6px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid var(--border-color); background: transparent; cursor: pointer;'
     });
     openBtn.title = 'Open this note natively to edit with full Live Preview & Autocomplete';
-    try { obsidian.setIcon(openBtn, 'file-text'); } catch (_) {}
+    try { obsidian.setIcon(openBtn, 'file-text'); } catch (_) { }
     openBtn.addEventListener('click', (ev) => {
       ev.stopPropagation();
       this.app.workspace.openLinkText(file.path, '', 'split');
     });
 
     const body = card.createDiv({ style: 'padding: 12px; min-height: 40px; position: relative;' });
-    
+
     // Preview container
-    const previewDiv = body.createDiv({ 
-      cls: 'markdown-preview-view', 
-      style: 'padding: 0; min-height: 30px;' 
+    const previewDiv = body.createDiv({
+      cls: 'markdown-preview-view',
+      style: 'padding: 0; min-height: 30px;'
     });
-    
+
     // Render the initial markdown preview
     const renderPreview = () => {
       previewDiv.empty();
       const rawText = initialValue || '';
       try {
         obsidian.MarkdownRenderer.renderMarkdown(rawText, previewDiv, file.path, this);
-        
+
         // Find all standard Obsidian [[...]] internal links and bind open handlers!
         previewDiv.querySelectorAll('a.internal-link').forEach(a => {
           const href = a.getAttribute('data-href') || a.getAttribute('href');
@@ -5246,9 +5246,9 @@ priority: normal
       }
       // Add subtle placeholder if empty
       if (!rawText.trim()) {
-        const ph = previewDiv.createDiv({ 
-          style: 'color: var(--text-faint); font-style: italic; font-size: 0.9em; padding: 4px 0;', 
-          text: placeholder || 'Empty section.' 
+        const ph = previewDiv.createDiv({
+          style: 'color: var(--text-faint); font-style: italic; font-size: 0.9em; padding: 4px 0;',
+          text: placeholder || 'Empty section.'
         });
       }
     };
@@ -5286,7 +5286,7 @@ priority: normal
     });
 
     const secWrap = parent.createDiv({ style: 'margin-top: 12px; margin-bottom: 12px;' });
-    
+
     if (filteredList.length === 0) {
       secWrap.createDiv({ cls: 'cad-empty', text: 'No linked items found.' });
       return;
@@ -5304,7 +5304,7 @@ priority: normal
           const head = card.createDiv({ cls: 'cad-proj-card-head' });
           const title = head.createEl('a', { cls: 'cad-proj-title', text: entityValue(e, 'name', def) || e.basename });
           title.addEventListener('click', (ev) => { ev.preventDefault(); this.openEntityDetail('project', e.file); });
-          
+
           const status = String(entityValue(e, 'status', def) || 'active');
           const priority = String(entityValue(e, 'priority', def) || '');
           const pillRow = head.createDiv({ cls: 'cad-proj-pills' });
@@ -5321,7 +5321,7 @@ priority: normal
           const progLabel = progWrap.createDiv({ cls: 'cad-proj-progress-label' });
           const progTextSpan = progLabel.createSpan({ text: 'Loading milestones...' });
           const progPctSpan = progLabel.createSpan({ cls: 'cad-proj-progress-pct', text: '' });
-          
+
           const bar = progWrap.createDiv({ cls: 'cad-proj-progress-bar' });
           const fill = bar.createDiv({ cls: 'cad-proj-progress-fill' });
           fill.style.width = '0%';
@@ -5345,12 +5345,12 @@ priority: normal
           // Beautiful general cards for contacts, companies, partners, deals, etc.
           const card = grid.createDiv({ cls: 'cad-proj-card' });
           const head = card.createDiv({ cls: 'cad-proj-card-head' });
-          
+
           const primaryField = def.fields.find(f => f.primary) || def.fields[0];
           const titleText = entityValue(e, primaryField.key, def) || e.basename;
           const title = head.createEl('a', { cls: 'cad-proj-title', text: titleText });
           title.addEventListener('click', (ev) => { ev.preventDefault(); this.openEntityDetail(targetEntity, e.file); });
-          
+
           const pillRow = head.createDiv({ cls: 'cad-proj-pills' });
           const statusField = def.fields.find(f => f.key === 'status' || f.key === 'type' || f.key === 'tier') || def.fields.find(f => f.type === 'enum');
           if (statusField) {
@@ -5371,7 +5371,7 @@ priority: normal
                 const fieldDiv = metaRow.createDiv();
                 fieldDiv.style.marginBottom = '2px';
                 fieldDiv.createSpan({ text: `${f.label}: `, style: 'font-weight: 500; color: var(--text-muted);' });
-                
+
                 const isLinkProperty = f.key === 'company' || f.key === 'contact' || f.key === 'partner' || f.key === 'owner' || f.key === 'project' || (f.suggestionSource && f.suggestionSource.startsWith('folder:'));
                 if (isLinkProperty) {
                   const links = parseLinkValues(val);
@@ -5384,7 +5384,7 @@ priority: normal
                       ev.preventDefault();
                       ev.stopPropagation();
                       const targetFile = this.app.vault.getMarkdownFiles().find(f => f.basename.toLowerCase() === link.target.toLowerCase());
-                      
+
                       let relatedKey = f.key === 'owner' ? 'contact' : f.key;
                       if (f.suggestionSource && f.suggestionSource.startsWith('folder:')) {
                         const folder = f.suggestionSource.replace('folder:', '').split('/').pop().toLowerCase();
@@ -5407,7 +5407,7 @@ priority: normal
       const board = secWrap.createDiv({ cls: 'cad-kanban-board' });
       const groupField = def.fields.find(f => f.key === 'stage' || f.key === 'status' || f.key === 'type' || f.type === 'enum') || def.fields[1];
       const columns = groupField.options || ['To Do', 'In Progress', 'Done'];
-      
+
       const isMobile = !!(obsidian.Platform && obsidian.Platform.isMobile);
 
       columns.forEach(colName => {
@@ -5416,23 +5416,23 @@ priority: normal
           const cleanVal = Array.isArray(val) ? val[0] : val;
           return String(cleanVal || '').toLowerCase() === colName.toLowerCase();
         });
-        
+
         // Sum values if any (e.g. deals/projects value)
         const hasValField = def.fields.find(f => f.key === 'value' || f.key === 'amount');
         const colValueSum = hasValField ? items.reduce((s, e) => s + (Number(entityValue(e, hasValField.key, def)) || 0), 0) : 0;
 
         const col = board.createDiv({ cls: 'cad-kanban-col' });
         col.dataset.stage = colName;
-        
+
         const colHead = col.createDiv({ cls: 'cad-kanban-col-head' });
         colHead.createDiv({ cls: 'cad-kanban-col-title', text: colName.toUpperCase() });
-        colHead.createDiv({ 
-          cls: 'cad-kanban-col-meta', 
-          text: hasValField ? `${items.length} · ${fmtValue(colValueSum, 'currency')}` : `${items.length}` 
+        colHead.createDiv({
+          cls: 'cad-kanban-col-meta',
+          text: hasValField ? `${items.length} · ${fmtValue(colValueSum, 'currency')}` : `${items.length}`
         });
-        
+
         const list = col.createDiv({ cls: 'cad-kanban-col-list' });
-        
+
         // Drag-and-drop event listeners
         list.addEventListener('dragover', (ev) => {
           ev.preventDefault();
@@ -5473,10 +5473,10 @@ priority: normal
           items.forEach(e => {
             const card = list.createDiv({ cls: 'cad-kanban-card' });
             card.dataset.path = e.file.path;
-            
+
             const primaryField = def.fields.find(f => f.primary) || def.fields[0];
             card.createDiv({ cls: 'cad-kanban-card-title', text: entityValue(e, primaryField.key, def) || e.basename });
-            
+
             const meta = card.createDiv({ cls: 'cad-kanban-card-meta' });
             if (hasValField) {
               const v = entityValue(e, hasValField.key, def);
@@ -5579,8 +5579,8 @@ priority: normal
               style: `padding: 4px 6px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; border: 1px solid var(--border-color); background: ${v === viewType ? 'var(--interactive-accent)' : 'transparent'}; color: ${v === viewType ? 'var(--text-on-accent)' : 'var(--text-muted)'};`
             });
             vBtn.title = title;
-            try { obsidian.setIcon(vBtn, icon); } catch (_) {}
-            
+            try { obsidian.setIcon(vBtn, icon); } catch (_) { }
+
             if (v !== viewType) {
               vBtn.addEventListener('click', async () => {
                 const newTag = `#cross-${targetEntity}-${linkField}-${v}`;
@@ -5705,18 +5705,18 @@ priority: normal
       });
 
       const secWrap = parent.createDiv({ style: 'margin-top: 24px; margin-bottom: 24px;' });
-      
-      const head = secWrap.createDiv({ 
-        style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;' 
+
+      const head = secWrap.createDiv({
+        style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;'
       });
-      head.createEl('h3', { 
+      head.createEl('h3', {
         text: `${def.plural.toUpperCase()} (${config.linkField.toUpperCase()}) — ${config.viewType.toUpperCase()}`,
-        style: 'margin: 0; font-size: 1.1em; font-weight: 700; letter-spacing: 0.05em;' 
+        style: 'margin: 0; font-size: 1.1em; font-weight: 700; letter-spacing: 0.05em;'
       });
 
-      const delBtn = head.createEl('button', { 
-        text: '×', 
-        style: 'color: var(--text-error); border: 1px solid var(--text-error); padding: 2px 8px; font-weight: bold; border-radius: 4px; background: transparent; cursor: pointer;' 
+      const delBtn = head.createEl('button', {
+        text: '×',
+        style: 'color: var(--text-error); border: 1px solid var(--text-error); padding: 2px 8px; font-weight: bold; border-radius: 4px; background: transparent; cursor: pointer;'
       });
       delBtn.title = 'Supprimer cette section croisée';
       delBtn.addEventListener('click', async () => {
@@ -5735,20 +5735,20 @@ priority: normal
         const columns = def.columns || [def.fields[0].key];
         this._renderEntityTable(secWrap, config.targetEntity, filteredList, columns);
       } else if (config.viewType === 'tile') {
-        const grid = secWrap.createDiv({ 
-          style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 12px;' 
+        const grid = secWrap.createDiv({
+          style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 12px;'
         });
         filteredList.forEach(e => {
-          const card = grid.createDiv({ 
-            cls: 'cad-proj-card', 
-            style: 'cursor: pointer; padding: 16px; background: var(--background-secondary); border: 1px solid var(--border-color); border-radius: 6px;' 
+          const card = grid.createDiv({
+            cls: 'cad-proj-card',
+            style: 'cursor: pointer; padding: 16px; background: var(--background-secondary); border: 1px solid var(--border-color); border-radius: 6px;'
           });
-          const title = card.createEl('h4', { 
-            text: entityValue(e, def.fields[0].key, def) || e.basename, 
-            style: 'margin: 0 0 8px 0; font-weight: 600;' 
+          const title = card.createEl('h4', {
+            text: entityValue(e, def.fields[0].key, def) || e.basename,
+            style: 'margin: 0 0 8px 0; font-weight: 600;'
           });
           card.addEventListener('click', () => this.openEntityDetail(config.targetEntity, e.file));
-          
+
           const meta = card.createDiv({ style: 'font-size: 0.85em; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;' });
           def.fields.slice(1, 4).forEach(f => {
             const val = entityValue(e, f.key, def);
@@ -5758,36 +5758,36 @@ priority: normal
           });
         });
       } else if (config.viewType === 'kanban') {
-        const kanbanWrap = secWrap.createDiv({ 
-          style: 'display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; margin-top: 12px;' 
+        const kanbanWrap = secWrap.createDiv({
+          style: 'display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; margin-top: 12px;'
         });
         const groupField = def.fields.find(f => f.key === 'stage' || f.key === 'status' || f.key === 'type' || f.type === 'enum') || def.fields[1];
         const columns = groupField.options || ['To Do', 'In Progress', 'Done'];
-        
+
         columns.forEach(colName => {
-          const col = kanbanWrap.createDiv({ 
-            cls: 'cad-stat-card', 
-            style: 'flex: 0 0 280px; padding: 12px; display: flex; flex-direction: column; min-height: 250px; background: var(--background-secondary); border: 1px solid var(--border-color); border-radius: 6px;' 
+          const col = kanbanWrap.createDiv({
+            cls: 'cad-stat-card',
+            style: 'flex: 0 0 280px; padding: 12px; display: flex; flex-direction: column; min-height: 250px; background: var(--background-secondary); border: 1px solid var(--border-color); border-radius: 6px;'
           });
-          col.createDiv({ 
-            text: colName.toUpperCase(), 
-            style: 'font-weight: 700; font-size: 0.8em; letter-spacing: 0.08em; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;' 
+          col.createDiv({
+            text: colName.toUpperCase(),
+            style: 'font-weight: 700; font-size: 0.8em; letter-spacing: 0.08em; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;'
           });
-          
+
           const colItems = filteredList.filter(e => {
             const val = entityValue(e, groupField.key, def);
             const cleanVal = Array.isArray(val) ? val[0] : val;
             return String(cleanVal || '').toLowerCase() === colName.toLowerCase();
           });
-          
+
           if (colItems.length === 0) {
             col.createDiv({ text: 'Aucun élément', style: 'color: var(--text-faint); text-align: center; margin-top: 24px; font-size: 0.85em;' });
           } else {
             const itemsList = col.createDiv({ style: 'display: flex; flex-direction: column; gap: 8px;' });
             colItems.forEach(e => {
-              const itemCard = itemsList.createDiv({ 
-                cls: 'cad-dash-row', 
-                style: 'padding: 8px 10px; cursor: pointer; border-radius: 4px; background: var(--background-primary); border: 1px solid var(--border-color); font-weight: 500;' 
+              const itemCard = itemsList.createDiv({
+                cls: 'cad-dash-row',
+                style: 'padding: 8px 10px; cursor: pointer; border-radius: 4px; background: var(--background-primary); border: 1px solid var(--border-color); font-weight: 500;'
               });
               itemCard.setText(entityValue(e, def.fields[0].key, def) || e.basename);
               itemCard.addEventListener('click', () => this.openEntityDetail(config.targetEntity, e.file));
@@ -6293,7 +6293,7 @@ priority: normal
     let tasksList = [];
     let todayTaskNotes = [];
     let file = null;
-    
+
     if (settings.taskManagementSystem === 'tasknotes') {
       const todayYmd = ymd(new Date());
       const allTaskNotes = listTaskNotesTasks(this.app);
@@ -6404,7 +6404,7 @@ priority: normal
     const settings = this.plugin.settings;
     const weekStart = startOfWeek(new Date(), settings.weekStartsOn);
     let open = 0, done = 0;
-    
+
     if (settings.taskManagementSystem === 'tasknotes') {
       const allTasks = listTaskNotesTasks(this.app);
       const weekDatesList = Array.from({ length: 7 }, (_, i) => ymd(addDays(weekStart, i)));
@@ -6621,7 +6621,7 @@ priority: normal
 
     this._renderPageHeader(root, 'Templates Dashboard', 'Manage and visually edit the templates for your entities');
 
-    const grid = root.createDiv({ 
+    const grid = root.createDiv({
       cls: 'cad-proj-grid'
     });
 
@@ -6650,13 +6650,13 @@ priority: normal
       }
 
       // Elegant premium tile layout matching project notes exactly, with dynamic entity color bands
-      const card = grid.createDiv({ 
+      const card = grid.createDiv({
         cls: 'cad-proj-card cad-template-tile'
       });
       card.dataset.entity = entityKey;
-      
+
       const head = card.createDiv({ style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;' });
-      
+
       const infoWrap = head.createDiv({ style: 'display: flex; align-items: center; gap: 12px;' });
       const iconSpan = infoWrap.createSpan({ cls: 'cad-template-tile-icon' });
       try { obsidian.setIcon(iconSpan, def.icon || 'file-text'); } catch (_) { iconSpan.setText('📝'); }
@@ -6665,21 +6665,21 @@ priority: normal
       titleInfo.createDiv({ text: def.label.toUpperCase(), style: 'font-weight: 700; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--text-muted);' });
       titleInfo.createEl('h3', { text: def.plural, style: 'margin: 2px 0 0 0; font-size: 1.15em; font-weight: 700;' });
 
-      const badge = head.createSpan({ 
+      const badge = head.createSpan({
         cls: exists ? 'cad-pill cad-pill-active' : 'cad-pill cad-pill-backlog',
-        text: exists ? 'Active Template' : 'Default' 
+        text: exists ? 'Active Template' : 'Default'
       });
       badge.style.fontSize = '0.7em';
       badge.style.padding = '3px 8px';
 
-      card.createDiv({ 
-        text: `Target Folder: ${def.folder}/`, 
-        style: 'font-size: 0.8em; font-family: monospace; color: var(--text-muted); background: var(--background-secondary); padding: 4px 8px; border-radius: 4px; margin-bottom: 12px; border: 1px solid var(--background-modifier-border);' 
+      card.createDiv({
+        text: `Target Folder: ${def.folder}/`,
+        style: 'font-size: 0.8em; font-family: monospace; color: var(--text-muted); background: var(--background-secondary); padding: 4px 8px; border-radius: 4px; margin-bottom: 12px; border: 1px solid var(--background-modifier-border);'
       });
 
-      const desc = card.createDiv({ 
-        text: `Defines properties and sections layout for each new ${def.label.toLowerCase()} item created.`, 
-        style: 'font-size: 0.85em; color: var(--text-muted); margin-bottom: 18px; flex: 1; line-height: 1.4;' 
+      const desc = card.createDiv({
+        text: `Defines properties and sections layout for each new ${def.label.toLowerCase()} item created.`,
+        style: 'font-size: 0.85em; color: var(--text-muted); margin-bottom: 18px; flex: 1; line-height: 1.4;'
       });
 
       const actions = card.createDiv({ style: 'display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 14px; margin-top: auto;' });
@@ -6704,9 +6704,9 @@ priority: normal
         });
       }
 
-      const resetBtn = actions.createEl('button', { 
-        cls: 'cad-btn', 
-        text: exists ? 'Reset to Default' : 'Enable Custom' 
+      const resetBtn = actions.createEl('button', {
+        cls: 'cad-btn',
+        text: exists ? 'Reset to Default' : 'Enable Custom'
       });
       resetBtn.style.padding = '5px 12px';
       resetBtn.style.height = 'auto';
@@ -6941,14 +6941,14 @@ priority: normal
       wrap.removeClass('drag-over');
       wrap.style.border = 'none';
       wrap.style.borderRadius = '0';
-      
+
       const draggedRawKey = ev.dataTransfer.getData('text/cadence-template-section');
       if (!draggedRawKey || draggedRawKey === rawKey) return;
 
       const curContent = await this.app.vault.read(file);
       const lines = curContent.split('\n');
       const h2Indices = lines.map((l, i) => (/^##\s/.test(l) ? i : -1)).filter(i => i >= 0);
-      
+
       const draggedIdx = h2Indices.findIndex(i => lines[i].trim().replace(/^##\s+/, '') === draggedRawKey);
       const targetIdx = h2Indices.findIndex(i => lines[i].trim().replace(/^##\s+/, '') === rawKey);
       if (draggedIdx === -1 || targetIdx === -1) return;
@@ -6959,23 +6959,23 @@ priority: normal
         const end = hi + 1 < h2Indices.length ? h2Indices[hi + 1] : lines.length;
         return lines.slice(start, end);
       };
-      
+
       const draggedBlock = getBlock(draggedIdx);
-      
+
       // Remove block from lines
       const startDel = h2Indices[draggedIdx];
       lines.splice(startDel, draggedBlock.length);
-      
+
       // Re-calculate indices to insert at the correct spot
       const linesTemp = lines.join('\n');
       const linesArr = linesTemp.split('\n');
       const h2IndicesNew = linesArr.map((l, i) => (/^##\s/.test(l) ? i : -1)).filter(i => i >= 0);
       const targetIdxNew = h2IndicesNew.findIndex(i => linesArr[i].trim().replace(/^##\s+/, '') === rawKey);
-      
+
       // Insert before the target section
       const insertPos = h2IndicesNew[targetIdxNew];
       linesArr.splice(insertPos, 0, ...draggedBlock);
-      
+
       await this.app.vault.modify(file, linesArr.join('\n'));
       this.render();
     });
@@ -6995,7 +6995,7 @@ priority: normal
       style: 'cursor: grab; display: flex; align-items: center; justify-content: center; color: var(--text-muted); opacity: 0.7; padding: 2px 4px;'
     });
     grip.title = 'Drag card to reorder';
-    try { obsidian.setIcon(grip, 'grip-vertical'); } catch (_) {}
+    try { obsidian.setIcon(grip, 'grip-vertical'); } catch (_) { }
 
     // --- Delete button ---
     const delBtn = ctrlRow.createEl('button', {
@@ -7375,18 +7375,18 @@ priority: normal
     const r = 50;
     const circ = 2 * Math.PI * r;
     let currentOffset = 0;
-    
+
     const colors = ['#38bdf8', '#34d399', '#f43f5e', '#a855f7', '#f97316', '#06b6d4', '#eab308'];
-    
+
     let svgContent = '';
     let legendContent = '<div class="cad-donut-legend" style="display: flex; flex-direction: column; gap: 6px; flex: 1;">';
-    
+
     data.forEach((item, index) => {
       const pct = item.count / total;
       const color = colors[index % colors.length];
       const strokeLength = pct * circ;
       const strokeOffset = -currentOffset;
-      
+
       svgContent += `
         <circle cx="70" cy="70" r="${r}" 
           fill="transparent" 
@@ -7398,7 +7398,7 @@ priority: normal
           class="cad-donut-segment"
         />
       `;
-      
+
       legendContent += `
         <div class="cad-donut-legend-item" style="display: flex; align-items: center; gap: 8px; font-size: 0.85em;">
           <span class="cad-donut-legend-color" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; flex-shrink: 0;"></span>
@@ -7406,10 +7406,10 @@ priority: normal
           <span class="cad-donut-legend-count" style="font-weight: 700; color: var(--text-muted);">${item.count} (${Math.round(pct * 100)}%)</span>
         </div>
       `;
-      
+
       currentOffset += strokeLength;
     });
-    
+
     legendContent += '</div>';
 
     return `
@@ -7432,10 +7432,10 @@ priority: normal
   _drawBarChart(data) {
     const total = data.reduce((sum, item) => sum + item.count, 0);
     if (total === 0) return `<div class="cad-empty" style="text-align: center; padding: 16px;">No data</div>`;
-    
+
     const maxCount = Math.max(1, ...data.map(item => item.count));
     const colors = ['#38bdf8', '#34d399', '#f43f5e', '#a855f7', '#f97316', '#06b6d4', '#eab308'];
-    
+
     let bars = '<div class="cad-stage-bars" style="padding: 12px 0; display: flex; flex-direction: column; gap: 8px;">';
     data.forEach((item, index) => {
       const color = colors[index % colors.length];
@@ -7494,7 +7494,7 @@ priority: normal
   async renderProjectsDashboard(root) {
     root.addClass('cadence-dashboard');
     root.addClass('cadence-list'); // Reuses list styles
-    
+
     // Retrieve projects
     const def = ENTITIES.project;
     if (!def) {
@@ -7502,29 +7502,29 @@ priority: normal
       return;
     }
     const allProjects = listEntities(this.app, 'project');
-    
+
     // ─── Header ────────────────────────────────────────
     this._renderPageHeader(root, 'Projects Dashboard', 'Status · priority · custom analytics', (right) => {
       const newProj = right.createEl('button', { cls: 'cad-btn primary', text: '+ New Project' });
       newProj.addEventListener('click', () => this._createEntityFromPrompt('project'));
     });
-    
+
     // ─── Stats strip ───────────────────────────────────
     const statusField = def.fields.find(f => f.key === 'status') || { options: ['active', 'on_hold', 'backlog', 'done', 'cancelled'] };
     const statuses = statusField.options || ['active', 'on_hold', 'backlog', 'done', 'cancelled'];
-    
+
     const grid = root.createDiv({ cls: 'cad-stat-grid', style: 'padding-bottom: 24px;' });
-    
+
     // 1. Total projects card
-    const totalCard = grid.createDiv({ 
-      cls: 'cad-stat-card', 
-      style: 'padding: 20px; display: flex; flex-direction: column; justify-content: center; min-height: 280px; margin: 0; position: relative;' 
+    const totalCard = grid.createDiv({
+      cls: 'cad-stat-card',
+      style: 'padding: 20px; display: flex; flex-direction: column; justify-content: center; min-height: 280px; margin: 0; position: relative;'
     });
     totalCard.dataset.accent = 'sky';
     totalCard.createDiv({ cls: 'cad-stat-label', text: 'TOTAL PROJECTS', style: 'font-weight: 700; letter-spacing: 0.12em;' });
     totalCard.createDiv({ cls: 'cad-stat-value', text: String(allProjects.length), style: 'font-size: 3rem; font-weight: 800; margin-top: 12px; line-height: 1;' });
     totalCard.createDiv({ cls: 'cad-stat-sub', text: 'Across all active and custom statuses', style: 'margin-top: 12px; font-size: 0.85em; color: var(--text-muted);' });
-    
+
     // 2. Dynamic status cards
     const statusAccents = {
       active: 'emerald',
@@ -7535,35 +7535,35 @@ priority: normal
       'on-hold': 'warn'
     };
     const fallbackAccents = ['sky', 'emerald', 'rose', 'purple', 'warn', 'mint'];
-    
+
     statuses.forEach((status, index) => {
       const items = allProjects.filter(p => String(entityValue(p, 'status', def)).toLowerCase() === status.toLowerCase());
       const accent = statusAccents[status.toLowerCase().replace('-', '_')] || fallbackAccents[index % fallbackAccents.length];
-      
-      const colCard = grid.createDiv({ 
-        cls: 'cad-stat-card', 
-        style: 'padding: 20px; display: flex; flex-direction: column; min-height: 280px; margin: 0; position: relative;' 
+
+      const colCard = grid.createDiv({
+        cls: 'cad-stat-card',
+        style: 'padding: 20px; display: flex; flex-direction: column; min-height: 280px; margin: 0; position: relative;'
       });
       colCard.dataset.accent = accent;
       colCard.dataset.stage = status; // For drag & drop target
-      
+
       // Header info
-      colCard.createDiv({ 
-        cls: 'cad-stat-label', 
+      colCard.createDiv({
+        cls: 'cad-stat-label',
         text: `${status.replace(/_/g, ' ').toUpperCase()} PROJECTS`,
-        style: 'font-weight: 700; letter-spacing: 0.12em;' 
+        style: 'font-weight: 700; letter-spacing: 0.12em;'
       });
-      colCard.createDiv({ 
-        cls: 'cad-stat-value', 
-        text: String(items.length), 
-        style: 'font-size: 2.25rem; font-weight: 800; margin-top: 4px;' 
+      colCard.createDiv({
+        cls: 'cad-stat-value',
+        text: String(items.length),
+        style: 'font-size: 2.25rem; font-weight: 800; margin-top: 4px;'
       });
-      
+
       // List area inside card
-      const list = colCard.createDiv({ 
-        style: 'margin-top: 16px; flex: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 4px; min-height: 120px;' 
+      const list = colCard.createDiv({
+        style: 'margin-top: 16px; flex: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 4px; min-height: 120px;'
       });
-      
+
       // Drag and drop listeners on the status card itself
       colCard.addEventListener('dragover', (ev) => {
         ev.preventDefault();
@@ -7584,8 +7584,8 @@ priority: normal
         const file = this.app.vault.getAbstractFileByPath(path);
         if (!file || !(file instanceof obsidian.TFile)) return;
         try {
-          await this.app.fileManager.processFrontMatter(file, (fm) => { 
-            fm['status'] = status; 
+          await this.app.fileManager.processFrontMatter(file, (fm) => {
+            fm['status'] = status;
           });
           new obsidian.Notice(`Project status set to ${status}`);
           this.render();
@@ -7593,38 +7593,38 @@ priority: normal
           new obsidian.Notice(`Failed to change status: ${e.message}`);
         }
       });
-      
+
       if (!items.length) {
         list.createDiv({ cls: 'cad-empty', text: 'No projects', style: 'text-align: center; color: var(--text-faint); margin-top: 32px;' });
       } else {
         const isMobile = !!(obsidian.Platform && obsidian.Platform.isMobile);
         items.forEach((e) => {
           // Project Row inside card list
-          const row = list.createDiv({ 
-            cls: 'cad-dash-row', 
-            style: 'display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--background-secondary); border-radius: 6px; cursor: pointer; border: 1px solid var(--border-color);' 
+          const row = list.createDiv({
+            cls: 'cad-dash-row',
+            style: 'display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--background-secondary); border-radius: 6px; cursor: pointer; border: 1px solid var(--border-color);'
           });
-          
+
           // Left content: Project Name
           const nameEl = row.createDiv({ style: 'font-weight: 500; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;' });
           nameEl.setText(entityValue(e, 'name', def) || e.basename);
-          
+
           // Right content: Priority Pill
           const priorityVal = entityValue(e, 'priority', def);
           if (priorityVal) {
-            const pill = row.createDiv({ 
+            const pill = row.createDiv({
               cls: `cad-pill cad-pill-${String(priorityVal).toLowerCase().replace(/\s+/g, '_')}`,
               text: String(priorityVal).replace(/_/g, ' ')
             });
             pill.style.fontSize = '0.7em';
             pill.style.padding = '1px 6px';
           }
-          
+
           row.addEventListener('click', (ev) => {
             ev.stopPropagation();
             this.openEntityDetail('project', e.file);
           });
-          
+
           if (!isMobile) {
             row.draggable = true;
             row.addEventListener('dragstart', (ev) => {
@@ -7646,53 +7646,53 @@ priority: normal
 
     // ─── Priority Board Section ────────────────────────
     root.createDiv({ cls: 'cad-section-label-lg', text: 'PROJECTS BY PRIORITY' });
-    
-    const boardWrap = root.createDiv({ 
+
+    const boardWrap = root.createDiv({
       cls: 'cad-stat-grid',
-      style: 'padding-top: 0; padding-bottom: 24px;' 
+      style: 'padding-top: 0; padding-bottom: 24px;'
     });
-    
+
     const renderBoard = () => {
       boardWrap.empty();
-      
+
       const priorityField = def.fields.find(field => field.key === 'priority') || { options: ['low', 'medium', 'high'] };
       const priorities = priorityField.options || ['low', 'medium', 'high'];
-      
+
       const priorityAccents = {
         low: 'sky',
         medium: 'warn',
         high: 'rose'
       };
-      
+
       priorities.forEach((prio) => {
         const items = allProjects.filter(p => String(entityValue(p, 'priority', def)).toLowerCase() === prio.toLowerCase());
         const accent = priorityAccents[prio.toLowerCase()] || 'sky';
-        
+
         // Large Priority Stat Card Stack
-        const colCard = boardWrap.createDiv({ 
-          cls: 'cad-stat-card', 
-          style: 'padding: 20px; display: flex; flex-direction: column; min-height: 280px; margin: 0; position: relative;' 
+        const colCard = boardWrap.createDiv({
+          cls: 'cad-stat-card',
+          style: 'padding: 20px; display: flex; flex-direction: column; min-height: 280px; margin: 0; position: relative;'
         });
         colCard.dataset.accent = accent;
         colCard.dataset.stage = prio; // For drag & drop target
-        
+
         // Header info
-        colCard.createDiv({ 
-          cls: 'cad-stat-label', 
+        colCard.createDiv({
+          cls: 'cad-stat-label',
           text: `${prio.toUpperCase()} PRIORITY`,
-          style: 'font-weight: 700; letter-spacing: 0.12em;' 
+          style: 'font-weight: 700; letter-spacing: 0.12em;'
         });
-        colCard.createDiv({ 
-          cls: 'cad-stat-value', 
-          text: String(items.length), 
-          style: 'font-size: 2.25rem; font-weight: 800; margin-top: 4px;' 
+        colCard.createDiv({
+          cls: 'cad-stat-value',
+          text: String(items.length),
+          style: 'font-size: 2.25rem; font-weight: 800; margin-top: 4px;'
         });
-        
+
         // List area inside card
-        const list = colCard.createDiv({ 
-          style: 'margin-top: 16px; flex: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 4px; min-height: 120px;' 
+        const list = colCard.createDiv({
+          style: 'margin-top: 16px; flex: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 4px; min-height: 120px;'
         });
-        
+
         // Drag and drop listeners on the priority card itself
         colCard.addEventListener('dragover', (ev) => {
           ev.preventDefault();
@@ -7713,8 +7713,8 @@ priority: normal
           const file = this.app.vault.getAbstractFileByPath(path);
           if (!file || !(file instanceof obsidian.TFile)) return;
           try {
-            await this.app.fileManager.processFrontMatter(file, (fm) => { 
-              fm['priority'] = prio; 
+            await this.app.fileManager.processFrontMatter(file, (fm) => {
+              fm['priority'] = prio;
             });
             new obsidian.Notice(`Project priority set to ${prio}`);
             this.render();
@@ -7722,38 +7722,38 @@ priority: normal
             new obsidian.Notice(`Failed to change priority: ${e.message}`);
           }
         });
-        
+
         if (!items.length) {
           list.createDiv({ cls: 'cad-empty', text: 'No projects', style: 'text-align: center; color: var(--text-faint); margin-top: 32px;' });
         } else {
           const isMobile = !!(obsidian.Platform && obsidian.Platform.isMobile);
           items.forEach((e) => {
             // Project Row inside card list
-            const row = list.createDiv({ 
-              cls: 'cad-dash-row', 
-              style: 'display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--background-secondary); border-radius: 6px; cursor: pointer; border: 1px solid var(--border-color);' 
+            const row = list.createDiv({
+              cls: 'cad-dash-row',
+              style: 'display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--background-secondary); border-radius: 6px; cursor: pointer; border: 1px solid var(--border-color);'
             });
-            
+
             // Left content: Project Name
             const nameEl = row.createDiv({ style: 'font-weight: 500; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;' });
             nameEl.setText(entityValue(e, 'name', def) || e.basename);
-            
+
             // Right content: Status Pill
             const statusVal = entityValue(e, 'status', def);
             if (statusVal) {
-              const pill = row.createDiv({ 
+              const pill = row.createDiv({
                 cls: `cad-pill cad-pill-${String(statusVal).toLowerCase().replace(/\s+/g, '_')}`,
                 text: String(statusVal).replace(/_/g, ' ')
               });
               pill.style.fontSize = '0.7em';
               pill.style.padding = '1px 6px';
             }
-            
+
             row.addEventListener('click', (ev) => {
               ev.stopPropagation();
               this.openEntityDetail('project', e.file);
             });
-            
+
             if (!isMobile) {
               row.draggable = true;
               row.addEventListener('dragstart', (ev) => {
@@ -7776,43 +7776,43 @@ priority: normal
     renderBoard();
 
     // ─── Custom Widgets / Charts Section ────────────────
-    const analyticsHeader = root.createDiv({ 
-      style: 'display: flex; justify-content: space-between; align-items: center; padding: 24px 32px 8px 32px; margin-bottom: 16px;' 
+    const analyticsHeader = root.createDiv({
+      style: 'display: flex; justify-content: space-between; align-items: center; padding: 24px 32px 8px 32px; margin-bottom: 16px;'
     });
-    const labelEl = analyticsHeader.createEl('span', { 
-      cls: 'cad-section-label-lg', 
+    const labelEl = analyticsHeader.createEl('span', {
+      cls: 'cad-section-label-lg',
       text: 'ANALYTICS & CHARTS',
-      style: 'padding: 0; margin: 0; display: inline-block;' 
+      style: 'padding: 0; margin: 0; display: inline-block;'
     });
-    
+
     const addWidgetBtn = analyticsHeader.createEl('button', { cls: 'cad-btn primary', text: '+ Add Custom Chart' });
-    
-    const widgetsGrid = root.createDiv({ 
-      cls: 'cad-dash-cols', 
-      style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 24px; padding: 0 32px;' 
+
+    const widgetsGrid = root.createDiv({
+      cls: 'cad-dash-cols',
+      style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 24px; padding: 0 32px;'
     });
 
     const renderWidgets = () => {
       widgetsGrid.empty();
-      
+
       const widgets = this.plugin.settings.projectDashboardWidgets || [];
       if (widgets.length === 0) {
         const emptyWrap = widgetsGrid.createDiv({ style: 'grid-column: 1 / -1; text-align: center; padding: 32px; background: var(--background-secondary); border-radius: 8px; border: 1px dashed var(--border-color);' });
         emptyWrap.createDiv({ text: 'No custom charts added yet. Click "+ Add Custom Chart" to create one!', style: 'color: var(--text-muted); font-size: 0.95em;' });
         return;
       }
-      
+
       widgets.forEach((w) => {
         const card = widgetsGrid.createDiv({ cls: 'cad-dash-card', style: 'margin: 0; display: flex; flex-direction: column;' });
-        
+
         // Card Head
         const head = card.createDiv({ cls: 'cad-dash-card-head', style: 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;' });
         const fieldKey = w.groupBy;
-        
+
         head.createDiv({ cls: 'cad-dash-card-title', text: w.title.toUpperCase(), style: 'font-weight: 700; font-size: 0.75rem; letter-spacing: 0.12em;' });
-        
+
         const actionsWrap = head.createDiv({ style: 'display: flex; gap: 8px; align-items: center;' });
-        
+
         // Chart Style Select
         const styleSelect = actionsWrap.createEl('select', { cls: 'cad-prop-input' });
         styleSelect.style.padding = '2px 4px';
@@ -7823,7 +7823,7 @@ priority: normal
         styleSelect.style.color = 'var(--text-normal)';
         styleSelect.style.border = '1px solid var(--border-color)';
         styleSelect.style.borderRadius = '4px';
-        
+
         [
           { value: 'donut', label: '🍩 Donut' },
           { value: 'bar', label: '📊 Bar' },
@@ -7833,18 +7833,18 @@ priority: normal
           const o = styleSelect.createEl('option', { value: opt.value, text: opt.label });
           if (w.style === opt.value) o.selected = true;
         });
-        
+
         styleSelect.addEventListener('change', async () => {
           w.style = styleSelect.value;
           await this.plugin.saveSettings();
           this.render();
         });
-        
+
         // Delete button
-        const delBtn = actionsWrap.createEl('button', { 
-          cls: 'cad-btn', 
-          text: '×', 
-          style: 'color: var(--text-error); padding: 2px 8px; font-weight: bold; border-color: var(--text-error); font-size: 1.1em; height: auto; border-radius: 4px; background: transparent;' 
+        const delBtn = actionsWrap.createEl('button', {
+          cls: 'cad-btn',
+          text: '×',
+          style: 'color: var(--text-error); padding: 2px 8px; font-weight: bold; border-color: var(--text-error); font-size: 1.1em; height: auto; border-radius: 4px; background: transparent;'
         });
         delBtn.addEventListener('click', async () => {
           if (!confirm(`Delete chart "${w.title}"?`)) return;
@@ -7852,9 +7852,9 @@ priority: normal
           await this.plugin.saveSettings();
           this.render();
         });
-        
+
         const body = card.createDiv({ cls: 'cad-dash-card-body', style: 'flex: 1; min-height: 180px; display: flex; flex-direction: column; justify-content: center; padding: 14px;' });
-        
+
         // Calculate chart data for this widget
         const counts = {};
         allProjects.forEach(p => {
@@ -7870,11 +7870,11 @@ priority: normal
             counts[label] = (counts[label] || 0) + 1;
           }
         });
-        
+
         const chartData = Object.entries(counts)
           .map(([label, count]) => ({ label, count }))
           .sort((a, b) => b.count - a.count);
-        
+
         // Draw chart based on style
         let chartHtml = '';
         if (w.style === 'donut') {
@@ -7886,11 +7886,11 @@ priority: normal
         } else {
           chartHtml = this._drawSimpleList(chartData);
         }
-        
+
         body.createDiv().innerHTML = chartHtml;
       });
     };
-    
+
     // Add custom widget builder listener
     addWidgetBtn.addEventListener('click', () => {
       new CadenceWidgetCreateModal(this.app, async (newWidget) => {
@@ -7902,7 +7902,7 @@ priority: normal
         this.render();
       }).open();
     });
-    
+
     renderWidgets();
   }
 
@@ -8041,45 +8041,45 @@ priority: normal
     mkMini('CONTACTS', contacts.length, 'warn', 'crm.contacts');
     mkMini('COMPANIES', companies.length, 'sky', 'crm.companies');
     mkMini('PARTNERS', partners.length, 'rose', 'prm.partners');
-    
+
     // ─── Custom Widgets / Charts Section ────────────────
-    const analyticsHeader = root.createDiv({ 
-      style: 'display: flex; justify-content: space-between; align-items: center; padding: 24px 32px 8px 32px; margin-bottom: 16px;' 
+    const analyticsHeader = root.createDiv({
+      style: 'display: flex; justify-content: space-between; align-items: center; padding: 24px 32px 8px 32px; margin-bottom: 16px;'
     });
-    const labelEl = analyticsHeader.createEl('span', { 
-      cls: 'cad-section-label-lg', 
+    const labelEl = analyticsHeader.createEl('span', {
+      cls: 'cad-section-label-lg',
       text: 'ANALYTICS & CHARTS',
-      style: 'padding: 0; margin: 0; display: inline-block;' 
+      style: 'padding: 0; margin: 0; display: inline-block;'
     });
-    
+
     const addWidgetBtn = analyticsHeader.createEl('button', { cls: 'cad-btn primary', text: '+ Add Custom Chart' });
-    
-    const widgetsGrid = root.createDiv({ 
-      cls: 'cad-dash-cols', 
-      style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 24px; padding: 0 32px;' 
+
+    const widgetsGrid = root.createDiv({
+      cls: 'cad-dash-cols',
+      style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 24px; padding: 0 32px;'
     });
 
     const renderWidgets = () => {
       widgetsGrid.empty();
-      
+
       const widgets = this.plugin.settings.crmDashboardWidgets || [];
       if (widgets.length === 0) {
         const emptyWrap = widgetsGrid.createDiv({ style: 'grid-column: 1 / -1; text-align: center; padding: 32px; background: var(--background-secondary); border-radius: 8px; border: 1px dashed var(--border-color);' });
         emptyWrap.createDiv({ text: 'No custom charts added yet. Click "+ Add Custom Chart" to create one!', style: 'color: var(--text-muted); font-size: 0.95em;' });
         return;
       }
-      
+
       widgets.forEach((w) => {
         const card = widgetsGrid.createDiv({ cls: 'cad-dash-card', style: 'margin: 0; display: flex; flex-direction: column;' });
-        
+
         // Card Head
         const head = card.createDiv({ cls: 'cad-dash-card-head', style: 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;' });
         const fieldKey = w.groupBy;
-        
+
         head.createDiv({ cls: 'cad-dash-card-title', text: w.title.toUpperCase(), style: 'font-weight: 700; font-size: 0.75rem; letter-spacing: 0.12em;' });
-        
+
         const actionsWrap = head.createDiv({ style: 'display: flex; gap: 8px; align-items: center;' });
-        
+
         // Chart Style Select
         const styleSelect = actionsWrap.createEl('select', { cls: 'cad-prop-input' });
         styleSelect.style.padding = '2px 4px';
@@ -8090,7 +8090,7 @@ priority: normal
         styleSelect.style.color = 'var(--text-normal)';
         styleSelect.style.border = '1px solid var(--border-color)';
         styleSelect.style.borderRadius = '4px';
-        
+
         [
           { value: 'donut', label: '🍩 Donut' },
           { value: 'bar', label: '📊 Bar' },
@@ -8100,18 +8100,18 @@ priority: normal
           const o = styleSelect.createEl('option', { value: opt.value, text: opt.label });
           if (w.style === opt.value) o.selected = true;
         });
-        
+
         styleSelect.addEventListener('change', async () => {
           w.style = styleSelect.value;
           await this.plugin.saveSettings();
           this.render();
         });
-        
+
         // Delete button
-        const delBtn = actionsWrap.createEl('button', { 
-          cls: 'cad-btn', 
-          text: '×', 
-          style: 'color: var(--text-error); padding: 2px 8px; font-weight: bold; border-color: var(--text-error); font-size: 1.1em; height: auto; border-radius: 4px; background: transparent;' 
+        const delBtn = actionsWrap.createEl('button', {
+          cls: 'cad-btn',
+          text: '×',
+          style: 'color: var(--text-error); padding: 2px 8px; font-weight: bold; border-color: var(--text-error); font-size: 1.1em; height: auto; border-radius: 4px; background: transparent;'
         });
         delBtn.addEventListener('click', async () => {
           if (!confirm(`Delete chart "${w.title}"?`)) return;
@@ -8119,9 +8119,9 @@ priority: normal
           await this.plugin.saveSettings();
           this.render();
         });
-        
+
         const body = card.createDiv({ cls: 'cad-dash-card-body', style: 'flex: 1; min-height: 180px; display: flex; flex-direction: column; justify-content: center; padding: 14px;' });
-        
+
         // Calculate chart data for this widget
         const counts = {};
         allDeals.forEach(p => {
@@ -8137,11 +8137,11 @@ priority: normal
             counts[label] = (counts[label] || 0) + 1;
           }
         });
-        
+
         const chartData = Object.entries(counts)
           .map(([label, count]) => ({ label, count }))
           .sort((a, b) => b.count - a.count);
-        
+
         // Draw chart based on style
         let chartHtml = '';
         if (w.style === 'donut') {
@@ -8153,11 +8153,11 @@ priority: normal
         } else {
           chartHtml = this._drawSimpleList(chartData);
         }
-        
+
         body.createDiv().innerHTML = chartHtml;
       });
     };
-    
+
     addWidgetBtn.addEventListener('click', () => {
       new CadenceWidgetCreateModal(this.app, 'deal', async (newWidget) => {
         if (!this.plugin.settings.crmDashboardWidgets) {
@@ -8168,7 +8168,7 @@ priority: normal
         this.render();
       }).open();
     });
-    
+
     renderWidgets();
   }
 
@@ -8183,7 +8183,7 @@ priority: normal
     }
     rows.forEach((r) => {
       const row = body.createDiv({ cls: 'cad-dash-row' });
-      
+
       const titleDiv = row.createDiv({ cls: 'cad-dash-row-title' });
       if (r.titleEntityKey) {
         this._renderEntityLinks(titleDiv, r.title, r.titleEntityKey);
@@ -9256,45 +9256,45 @@ priority: normal
     const convBar = convWrap.createDiv({ cls: 'cad-proj-progress-bar' });
     const convFill = convBar.createDiv({ cls: 'cad-proj-progress-fill' });
     convFill.style.width = `${conv}%`;
-    
+
     // ─── Custom Widgets / Charts Section ────────────────
-    const analyticsHeader = root.createDiv({ 
-      style: 'display: flex; justify-content: space-between; align-items: center; padding: 24px 32px 8px 32px; margin-bottom: 16px;' 
+    const analyticsHeader = root.createDiv({
+      style: 'display: flex; justify-content: space-between; align-items: center; padding: 24px 32px 8px 32px; margin-bottom: 16px;'
     });
-    const labelEl = analyticsHeader.createEl('span', { 
-      cls: 'cad-section-label-lg', 
+    const labelEl = analyticsHeader.createEl('span', {
+      cls: 'cad-section-label-lg',
       text: 'ANALYTICS & CHARTS',
-      style: 'padding: 0; margin: 0; display: inline-block;' 
+      style: 'padding: 0; margin: 0; display: inline-block;'
     });
-    
+
     const addWidgetBtn = analyticsHeader.createEl('button', { cls: 'cad-btn primary', text: '+ Add Custom Chart' });
-    
-    const widgetsGrid = root.createDiv({ 
-      cls: 'cad-dash-cols', 
-      style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 24px; padding: 0 32px;' 
+
+    const widgetsGrid = root.createDiv({
+      cls: 'cad-dash-cols',
+      style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 24px; padding: 0 32px;'
     });
 
     const renderWidgets = () => {
       widgetsGrid.empty();
-      
+
       const widgets = this.plugin.settings.prmDashboardWidgets || [];
       if (widgets.length === 0) {
         const emptyWrap = widgetsGrid.createDiv({ style: 'grid-column: 1 / -1; text-align: center; padding: 32px; background: var(--background-secondary); border-radius: 8px; border: 1px dashed var(--border-color);' });
         emptyWrap.createDiv({ text: 'No custom charts added yet. Click "+ Add Custom Chart" to create one!', style: 'color: var(--text-muted); font-size: 0.95em;' });
         return;
       }
-      
+
       widgets.forEach((w) => {
         const card = widgetsGrid.createDiv({ cls: 'cad-dash-card', style: 'margin: 0; display: flex; flex-direction: column;' });
-        
+
         // Card Head
         const head = card.createDiv({ cls: 'cad-dash-card-head', style: 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;' });
         const fieldKey = w.groupBy;
-        
+
         head.createDiv({ cls: 'cad-dash-card-title', text: w.title.toUpperCase(), style: 'font-weight: 700; font-size: 0.75rem; letter-spacing: 0.12em;' });
-        
+
         const actionsWrap = head.createDiv({ style: 'display: flex; gap: 8px; align-items: center;' });
-        
+
         // Chart Style Select
         const styleSelect = actionsWrap.createEl('select', { cls: 'cad-prop-input' });
         styleSelect.style.padding = '2px 4px';
@@ -9305,7 +9305,7 @@ priority: normal
         styleSelect.style.color = 'var(--text-normal)';
         styleSelect.style.border = '1px solid var(--border-color)';
         styleSelect.style.borderRadius = '4px';
-        
+
         [
           { value: 'donut', label: '🍩 Donut' },
           { value: 'bar', label: '📊 Bar' },
@@ -9315,18 +9315,18 @@ priority: normal
           const o = styleSelect.createEl('option', { value: opt.value, text: opt.label });
           if (w.style === opt.value) o.selected = true;
         });
-        
+
         styleSelect.addEventListener('change', async () => {
           w.style = styleSelect.value;
           await this.plugin.saveSettings();
           this.render();
         });
-        
+
         // Delete button
-        const delBtn = actionsWrap.createEl('button', { 
-          cls: 'cad-btn', 
-          text: '×', 
-          style: 'color: var(--text-error); padding: 2px 8px; font-weight: bold; border-color: var(--text-error); font-size: 1.1em; height: auto; border-radius: 4px; background: transparent;' 
+        const delBtn = actionsWrap.createEl('button', {
+          cls: 'cad-btn',
+          text: '×',
+          style: 'color: var(--text-error); padding: 2px 8px; font-weight: bold; border-color: var(--text-error); font-size: 1.1em; height: auto; border-radius: 4px; background: transparent;'
         });
         delBtn.addEventListener('click', async () => {
           if (!confirm(`Delete chart "${w.title}"?`)) return;
@@ -9334,9 +9334,9 @@ priority: normal
           await this.plugin.saveSettings();
           this.render();
         });
-        
+
         const body = card.createDiv({ cls: 'cad-dash-card-body', style: 'flex: 1; min-height: 180px; display: flex; flex-direction: column; justify-content: center; padding: 14px;' });
-        
+
         // Calculate chart data for this widget
         const counts = {};
         partners.forEach(p => {
@@ -9352,11 +9352,11 @@ priority: normal
             counts[label] = (counts[label] || 0) + 1;
           }
         });
-        
+
         const chartData = Object.entries(counts)
           .map(([label, count]) => ({ label, count }))
           .sort((a, b) => b.count - a.count);
-        
+
         // Draw chart based on style
         let chartHtml = '';
         if (w.style === 'donut') {
@@ -9368,11 +9368,11 @@ priority: normal
         } else {
           chartHtml = this._drawSimpleList(chartData);
         }
-        
+
         body.createDiv().innerHTML = chartHtml;
       });
     };
-    
+
     addWidgetBtn.addEventListener('click', () => {
       new CadenceWidgetCreateModal(this.app, 'partner', async (newWidget) => {
         if (!this.plugin.settings.prmDashboardWidgets) {
@@ -9383,7 +9383,7 @@ priority: normal
         this.render();
       }).open();
     });
-    
+
     renderWidgets();
   }
 
@@ -9687,7 +9687,7 @@ priority: normal
             if (file && file instanceof obsidian.TFile) this.openEntityDetail('project', file);
           });
         }
-        
+
         if (this.plugin.settings.taskManagementSystem !== 'tasknotes') {
           const linkBtn = row.createEl('button', { cls: 'cad-task-link-btn' + (linkedProject ? ' linked' : ''), text: linkedProject ? '✎' : '📁' });
           linkBtn.title = linkedProject ? 'Change linked project' : 'Link to a project';
@@ -9812,7 +9812,7 @@ priority: normal
 
     let totalOpen = 0, totalDone = 0;
     let dayData = [];
-    
+
     if (settings.taskManagementSystem === 'tasknotes') {
       const allTasks = listTaskNotesTasks(this.app);
       dayData = days.map((d) => {
@@ -10022,10 +10022,10 @@ class CadenceSettingTab extends obsidian.PluginSettingTab {
     containerEl.createEl('h3', { text: 'App' });
 
     new obsidian.Setting(containerEl)
-      .setName('Système de gestion des tâches')
-      .setDesc('Choisissez entre le gestionnaire natif de Cadence (utilisant les notes quotidiennes) ou le plugin externe TaskNotes.')
+      .setName('Task management system')
+      .setDesc('Choose between the native Cadence manager (using daily notes) or the external TaskNotes plugin.')
       .addDropdown((d) => d
-        .addOption('native', 'Natif (Cadence)')
+        .addOption('native', 'Native (Cadence)')
         .addOption('tasknotes', 'TaskNotes')
         .setValue(this.plugin.settings.taskManagementSystem || 'native')
         .onChange(async (v) => {
@@ -10040,28 +10040,28 @@ class CadenceSettingTab extends obsidian.PluginSettingTab {
       const statusSetting = new obsidian.Setting(containerEl);
       if (isTaskNotesActive) {
         statusSetting
-          .setName('Statut TaskNotes')
-          .setDesc('TaskNotes est actuellement installé, activé et connecté avec succès à Cadence.');
+          .setName('TaskNotes Status')
+          .setDesc('TaskNotes is currently installed, activated and successfully connected to Cadence.');
         const statusSpan = statusSetting.controlEl.createSpan({
-          text: '🟢 Actif et Connecté'
+          text: '🟢 Active and Connected'
         });
         statusSpan.style.color = '#27ae60';
         statusSpan.style.fontWeight = 'bold';
       } else {
         statusSetting
-          .setName('TaskNotes non détecté')
-          .setDesc("Le plugin TaskNotes n'est pas activé ou installé dans votre coffre Obsidian.");
+          .setName('TaskNotes not detected')
+          .setDesc("The TaskNotes plugin is not enabled or installed in your Obsidian vault.");
         const statusSpan = statusSetting.controlEl.createSpan({
-          text: '🔴 Inactif / Non installé'
+          text: '🔴 Inactive / Not installed'
         });
         statusSpan.style.color = '#c0392b';
         statusSpan.style.fontWeight = 'bold';
-        
+
         new obsidian.Setting(containerEl)
-          .setName('Télécharger TaskNotes')
-          .setDesc("Cliquez sur le bouton ci-dessous pour ouvrir la page GitHub du plugin TaskNotes afin de l'installer dans votre Obsidian.")
+          .setName('Download TaskNotes')
+          .setDesc("Click the button below to open the TaskNotes plugin GitHub page to install it on your Obsidian.")
           .addButton((btn) => btn
-            .setButtonText('Ouvrir GitHub')
+            .setButtonText('Download TaskNotes')
             .onClick(() => {
               window.open('https://github.com/callumalpass/obsidian-tasknotes', '_blank');
             }));
@@ -10175,7 +10175,7 @@ class CadenceSettingTab extends obsidian.PluginSettingTab {
     const renderCustomPagesList = () => {
       customPagesDiv.empty();
       const customPages = (this.plugin.settings.customPages || []).slice().sort((a, b) => a.label.localeCompare(b.label));
-      
+
       if (customPages.length === 0) {
         customPagesDiv.createEl('p', { text: 'No custom pages added yet.', cls: 'setting-item-description' });
       } else {
@@ -10194,7 +10194,7 @@ class CadenceSettingTab extends obsidian.PluginSettingTab {
         customPages.forEach((p) => {
           const tr = tbody.createEl('tr');
           tr.createEl('td', { text: p.label });
-          
+
           const sectionLabel = {
             'planner': 'Planner',
             'projects': 'Projects',
@@ -10362,9 +10362,9 @@ class CadenceSettingTab extends obsidian.PluginSettingTab {
           ];
           this.plugin.settings.customEntities[entityKey] = newFields;
         }
-        
+
         const capitalize = (s) => (s === s.toUpperCase()) ? s : (s.charAt(0).toUpperCase() + s.slice(1));
-        
+
         // Re-register inside ENTITIES
         ENTITIES[entityKey] = {
           folder: `Cadence/${val}`,
@@ -10373,7 +10373,7 @@ class CadenceSettingTab extends obsidian.PluginSettingTab {
           fields: newFields,
           columns: ['name']
         };
-        
+
         const newPage = {
           id: `custom.${Date.now()}`,
           label: val,
@@ -10386,7 +10386,7 @@ class CadenceSettingTab extends obsidian.PluginSettingTab {
         const pages = this.plugin.settings.customPages || [];
         pages.push(newPage);
         this.plugin.settings.customPages = pages;
-        
+
         // Also save their layout preference under pageLayouts
         if (!this.plugin.settings.pageLayouts) this.plugin.settings.pageLayouts = {};
         this.plugin.settings.pageLayouts[newPage.id] = newPage.defaultLayout;
@@ -10684,7 +10684,7 @@ class CadenceSettingTab extends obsidian.PluginSettingTab {
               });
             }
           }
-        } catch (_) {}
+        } catch (_) { }
         _allSuggestionKeys.forEach(k => datalist.createEl('option', { value: k }));
 
         const inputKey = keyWrap.createEl('input', {
@@ -10721,7 +10721,7 @@ class CadenceSettingTab extends obsidian.PluginSettingTab {
               inputKey.value = field.key;
               return;
             }
-            
+
             const oldKey = field.key;
             // Migrate files of the current selected entity
             await migrateFrontmatterKey(this.app, selectedEntityKey, oldKey, sanitized);
@@ -10766,18 +10766,18 @@ class CadenceSettingTab extends obsidian.PluginSettingTab {
         const selectType = tdType.createEl('select', { cls: 'cad-prop-input' });
         const types = field.key === 'type'
           ? [
-              { value: 'text', label: 'Text' },
-              { value: 'enum', label: 'Select (Enum)' }
-            ]
+            { value: 'text', label: 'Text' },
+            { value: 'enum', label: 'Select (Enum)' }
+          ]
           : [
-              { value: 'text', label: 'Text' },
-              { value: 'multitext', label: 'List / Multiple Links' },
-              { value: 'date', label: 'Date' },
-              { value: 'number', label: 'Number' },
-              { value: 'currency', label: 'Currency' },
-              { value: 'tags', label: 'Tags' },
-              { value: 'enum', label: 'Select (Enum)' }
-            ];
+            { value: 'text', label: 'Text' },
+            { value: 'multitext', label: 'List / Multiple Links' },
+            { value: 'date', label: 'Date' },
+            { value: 'number', label: 'Number' },
+            { value: 'currency', label: 'Currency' },
+            { value: 'tags', label: 'Tags' },
+            { value: 'enum', label: 'Select (Enum)' }
+          ];
         types.forEach(t => {
           const opt = selectType.createEl('option', { value: t.value, text: t.label });
           if (field.type === t.value || (!field.type && t.value === 'text')) {
@@ -11312,7 +11312,7 @@ class CadencePlugin extends obsidian.Plugin {
             else if (ftype === 'tags') obsType = 'tags';
             else if (ftype === 'multitext') obsType = 'multitext';
             else if (f.isList) obsType = 'multitext';
-            
+
             this.app.metadataTypeManager.setType(f.key, obsType);
           }
         }
@@ -11325,7 +11325,7 @@ class CadencePlugin extends obsidian.Plugin {
   async loadSettings() {
     const loadedData = await this.loadData() || {};
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
-    
+
     // Deep default customEntities if missing or empty
     if (!this.settings.customEntities) {
       this.settings.customEntities = {};
@@ -11369,7 +11369,7 @@ class CadencePlugin extends obsidian.Plugin {
         }
       }
     }
-    
+
     // Reconstruct custom entities from settings
     if (this.settings.customEntities) {
       for (const [entityKey, customFields] of Object.entries(this.settings.customEntities)) {
@@ -11379,7 +11379,7 @@ class CadencePlugin extends obsidian.Plugin {
           // Reconstruct dynamic custom entity type
           const customPages = this.settings.customPages || [];
           const customPage = customPages.find(p => p.entityKey === entityKey);
-          
+
           let label, plural;
           if (customPage) {
             plural = customPage.label;
@@ -11394,7 +11394,7 @@ class CadencePlugin extends obsidian.Plugin {
             label = (entityKey === entityKey.toUpperCase()) ? entityKey : (entityKey.charAt(0).toUpperCase() + entityKey.slice(1));
             plural = label + 's';
           }
-          
+
           ENTITIES[entityKey] = {
             folder: `Cadence/${plural}`,
             label: label,
@@ -11409,7 +11409,7 @@ class CadencePlugin extends obsidian.Plugin {
     // Ensure 'type' field is in customEntities and ENTITIES fields (except activity)
     for (const [entityKey, def] of Object.entries(ENTITIES)) {
       if (entityKey === 'activity') continue;
-      
+
       const hasType = def.fields.some(f => f.key === 'type');
       if (!hasType) {
         def.fields.push({
@@ -11418,7 +11418,7 @@ class CadencePlugin extends obsidian.Plugin {
           type: 'text'
         });
       }
-      
+
       // Also ensure it is in the settings' customEntities fields
       if (this.settings.customEntities[entityKey]) {
         const hasSetType = this.settings.customEntities[entityKey].some(f => f.key === 'type');
@@ -11768,9 +11768,9 @@ class CadencePlugin extends obsidian.Plugin {
             const formattedVal = sortedProjects.length === 0
               ? null
               : (sortedProjects.length === 1
-                  ? `[[${sortedProjects[0]}]]`
-                  : sortedProjects.map(p => `[[${p}]]`)
-                );
+                ? `[[${sortedProjects[0]}]]`
+                : sortedProjects.map(p => `[[${p}]]`)
+              );
 
             await this.app.fileManager.processFrontMatter(contactFile, (cfm) => {
               if (formattedVal === null) {
@@ -11864,7 +11864,7 @@ class CadencePlugin extends obsidian.Plugin {
 
         if (hasProject) {
           const remainingProjects = existingProjectNames.filter(p => p.toLowerCase() !== projectName.toLowerCase());
-          
+
           await this.app.fileManager.processFrontMatter(contactFile, (cfm) => {
             if (remainingProjects.length === 0) {
               delete cfm.project;
