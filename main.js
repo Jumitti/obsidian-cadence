@@ -2162,6 +2162,61 @@ class CadencePromptModal extends obsidian.Modal {
   }
 }
 
+/* ─────────── Confirm modal (replaces blocking window.confirm) ─────────── */
+class CadenceConfirmModal extends obsidian.Modal {
+  constructor(app, opts) {
+    super(app);
+    this.title = opts.title || 'Confirm Action';
+    this.message = opts.message || 'Are you sure?';
+    this.confirmLabel = opts.confirmLabel || 'Confirm';
+    this.cancelLabel = opts.cancelLabel || 'Cancel';
+    this.onConfirm = opts.onConfirm;
+    this.onCancel = opts.onCancel;
+    this._responded = false;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass('cad-prompt-modal');
+    contentEl.addClass('cad-confirm-modal');
+    contentEl.createEl('h3', { text: this.title });
+
+    const msg = contentEl.createEl('p', { text: this.message });
+    msg.style.fontSize = '14px';
+    msg.style.marginTop = '8px';
+    msg.style.marginBottom = '20px';
+    msg.style.color = 'var(--text-muted)';
+
+    const row = contentEl.createDiv();
+    row.style.display = 'flex';
+    row.style.justifyContent = 'flex-end';
+    row.style.gap = '8px';
+
+    const cancelBtn = row.createEl('button', { text: this.cancelLabel, cls: 'cad-btn' });
+    cancelBtn.addEventListener('click', () => {
+      this._responded = true;
+      this.close();
+      if (this.onCancel) this.onCancel();
+    });
+
+    const confirmBtn = row.createEl('button', { text: this.confirmLabel, cls: 'cad-btn primary danger' });
+    confirmBtn.addEventListener('click', () => {
+      this._responded = true;
+      this.close();
+      if (this.onConfirm) this.onConfirm();
+    });
+
+    setTimeout(() => confirmBtn.focus(), 50);
+  }
+
+  onClose() {
+    if (!this._responded && this.onCancel) {
+      this.onCancel();
+    }
+  }
+}
+
 class CadenceWidgetCreateModal extends obsidian.Modal {
   constructor(app, entityKey, onSubmit) {
     super(app);
@@ -2737,7 +2792,13 @@ class CadenceAppView extends obsidian.ItemView {
       if (this._modeUsesEntityFolder(file && file.path)) this.render();
     };
     this.registerEvent(this.app.vault.on('create', entityRefresh));
-    this.registerEvent(this.app.vault.on('delete', entityRefresh));
+    this.registerEvent(this.app.vault.on('delete', (file) => {
+      if (this.detailFile && file && file.path === this.detailFile.path) {
+        this.closeEntityDetail();
+        return;
+      }
+      entityRefresh(file);
+    }));
     this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
       if (this.detailFile && file && file.path === this.detailFile.path) return;
       if (this._modeUsesEntityFolder(file && file.path) || this._modeUsesEntityFolder(oldPath)) this.render();
@@ -2766,10 +2827,17 @@ class CadenceAppView extends obsidian.ItemView {
   }
 
   async render() {
-    const root = this.containerEl.children[1];
-    root.empty();
-    root.addClass('cadence-app');
-    root.toggleClass('cad-dark', !!this.plugin.settings.cadenceAppDark);
+    if (this._isRendering) {
+      this._needsRenderAgain = true;
+      return;
+    }
+    this._isRendering = true;
+    this._needsRenderAgain = false;
+    try {
+      const root = this.containerEl.children[1];
+      root.empty();
+      root.addClass('cadence-app');
+      root.toggleClass('cad-dark', !!this.plugin.settings.cadenceAppDark);
 
     const active = this._resolveSurface(this.mode) || SURFACE_BY_ID['planner.today'];
 
@@ -2913,7 +2981,14 @@ class CadenceAppView extends obsidian.ItemView {
         this.renderComingSoon(content, active);
       }
     }
+  } finally {
+    this._isRendering = false;
+    if (this._needsRenderAgain) {
+      this._needsRenderAgain = false;
+      this.render();
+    }
   }
+}
 
   renderComingSoon(root, surface) {
     root.addClass('cadence-soon');
@@ -3544,15 +3619,25 @@ class CadenceAppView extends obsidian.ItemView {
     const openNote = headRight.createEl('button', { cls: 'cad-btn', text: 'Open as note' });
     openNote.addEventListener('click', () => this.app.workspace.openLinkText(file.path, '', false));
     const deleteBtn = headRight.createEl('button', { cls: 'cad-btn cad-btn-danger', text: 'Delete' });
-    deleteBtn.addEventListener('click', async () => {
-      if (!confirm(`Delete this ${def.label.toLowerCase()}? This moves the file to trash.`)) return;
-      try {
-        await this.app.vault.trash(file, true);
-        new obsidian.Notice(`Deleted ${def.label}: ${file.basename}`);
-        this.closeEntityDetail();
-      } catch (e) {
-        new obsidian.Notice(`Delete failed: ${e.message}`);
-      }
+    deleteBtn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      new CadenceConfirmModal(this.app, {
+        title: `Delete ${def.label}`,
+        message: `Delete this ${def.label.toLowerCase()}? This moves the file to trash.`,
+        confirmLabel: 'Delete',
+        onConfirm: () => {
+          deleteBtn.blur();
+          setTimeout(async () => {
+            try {
+              await this.app.vault.trash(file, true);
+              new obsidian.Notice(`Deleted ${def.label}: ${file.basename}`);
+              this.closeEntityDetail();
+            } catch (e) {
+              new obsidian.Notice(`Delete failed: ${e.message}`);
+            }
+          }, 50);
+        }
+      }).open();
     });
 
     // Form
@@ -4086,15 +4171,25 @@ class CadenceAppView extends obsidian.ItemView {
     const openNote = headRight.createEl('button', { cls: 'cad-btn', text: 'Open as note' });
     openNote.addEventListener('click', () => this.app.workspace.openLinkText(file.path, '', false));
     const deleteBtn = headRight.createEl('button', { cls: 'cad-btn cad-btn-danger', text: 'Delete' });
-    deleteBtn.addEventListener('click', async () => {
-      if (!confirm(`Delete this company? This moves the file to trash.`)) return;
-      try {
-        await this.app.vault.trash(file, true);
-        new obsidian.Notice(`Deleted company: ${file.basename}`);
-        this.closeEntityDetail();
-      } catch (e) {
-        new obsidian.Notice(`Delete failed: ${e.message}`);
-      }
+    deleteBtn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      new CadenceConfirmModal(this.app, {
+        title: 'Delete Company',
+        message: 'Delete this company? This moves the file to trash.',
+        confirmLabel: 'Delete',
+        onConfirm: () => {
+          deleteBtn.blur();
+          setTimeout(async () => {
+            try {
+              await this.app.vault.trash(file, true);
+              new obsidian.Notice(`Deleted company: ${file.basename}`);
+              this.closeEntityDetail();
+            } catch (e) {
+              new obsidian.Notice(`Delete failed: ${e.message}`);
+            }
+          }, 50);
+        }
+      }).open();
     });
 
     const hero = root.createDiv({ cls: 'cad-pd-hero' });
@@ -4511,15 +4606,25 @@ class CadenceAppView extends obsidian.ItemView {
     const openNote = headRight.createEl('button', { cls: 'cad-btn', text: 'Open as note' });
     openNote.addEventListener('click', () => this.app.workspace.openLinkText(file.path, '', false));
     const deleteBtn = headRight.createEl('button', { cls: 'cad-btn cad-btn-danger', text: 'Delete' });
-    deleteBtn.addEventListener('click', async () => {
-      if (!confirm(`Delete this project? This moves the file to trash.`)) return;
-      try {
-        await this.app.vault.trash(file, true);
-        new obsidian.Notice(`Deleted project: ${file.basename}`);
-        this.closeEntityDetail();
-      } catch (e) {
-        new obsidian.Notice(`Delete failed: ${e.message}`);
-      }
+    deleteBtn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      new CadenceConfirmModal(this.app, {
+        title: 'Delete Project',
+        message: 'Delete this project? This moves the file to trash.',
+        confirmLabel: 'Delete',
+        onConfirm: () => {
+          deleteBtn.blur();
+          setTimeout(async () => {
+            try {
+              await this.app.vault.trash(file, true);
+              new obsidian.Notice(`Deleted project: ${file.basename}`);
+              this.closeEntityDetail();
+            } catch (e) {
+              new obsidian.Notice(`Delete failed: ${e.message}`);
+            }
+          }, 50);
+        }
+      }).open();
     });
 
     /* Hero — name (already in breadcrumb), pills, meta, progress */
@@ -5154,6 +5259,13 @@ class CadenceAppView extends obsidian.ItemView {
 
     addBtn.addEventListener('click', async () => {
       if (this.plugin.settings.taskManagementSystem === 'tasknotes') {
+        const commandId = "tasknotes:create-new-task";
+        const hasCommand = this.app.commands && this.app.commands.commands && this.app.commands.commands[commandId];
+        if (hasCommand) {
+          this.app.commands.executeCommandById(commandId);
+          return;
+        }
+
         const text = await this._prompt({
           title: 'Ajouter une tâche (TaskNotes)',
           placeholder: 'Que faut-il faire ?',
