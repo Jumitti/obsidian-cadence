@@ -561,6 +561,23 @@ async function ensureDefaultTemplates(app) {
       await app.vault.create(targetPath, templateContent);
     }
   }
+
+  // Ensure daily note template exists
+  const dailyTargetPath = `${templatesFolder}/daily.md`;
+  let dailyTFile = app.vault.getAbstractFileByPath(dailyTargetPath);
+  if (!dailyTFile) {
+    const dailyTemplateContent = [
+      '# {{date}}',
+      '',
+      '## Today',
+      '- [ ] ',
+      '',
+      '## Journal',
+      '',
+      ''
+    ].join('\n');
+    await app.vault.create(dailyTargetPath, dailyTemplateContent);
+  }
 }
 
 
@@ -1069,11 +1086,27 @@ async function ensureDailyNote(app, settings, date = new Date()) {
   if (folder && !app.vault.getAbstractFileByPath(folder)) {
     try { await app.vault.createFolder(folder); } catch (_) { }
   }
-  const template = [
-    `# ${ymd(date)}`, '',
-    settings.tasksHeading, '- [ ] ', '',
-    settings.journalHeading, '', '',
-  ].join('\n');
+
+  let template = '';
+  const dailyTemplatePath = 'Cadence/Templates/daily.md';
+  const dailyTemplateFile = app.vault.getAbstractFileByPath(dailyTemplatePath);
+  if (dailyTemplateFile && dailyTemplateFile instanceof obsidian.TFile) {
+    const rawTemplate = await app.vault.read(dailyTemplateFile);
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    template = rawTemplate
+      .replace(/\{\{name\}\}/gi, ymd(date))
+      .replace(/\{\{title\}\}/gi, ymd(date))
+      .replace(/\{\{date\}\}/gi, ymd(date))
+      .replace(/\{\{time\}\}/gi, timeStr);
+  } else {
+    template = [
+      `# ${ymd(date)}`, '',
+      settings.tasksHeading, '- [ ] ', '',
+      settings.journalHeading, '', '',
+    ].join('\n');
+  }
+
   file = await app.vault.create(path, template);
   return file;
 }
@@ -6737,6 +6770,94 @@ priority: normal
       cls: 'cad-proj-grid'
     });
 
+    // Render Daily Note Template Card
+    {
+      const templatesFolder = 'Cadence/Templates';
+      await ensureFolderSync(this.app, templatesFolder);
+      const dailyTemplatePath = `${templatesFolder}/daily.md`;
+      const dailyTFile = this.app.vault.getAbstractFileByPath(dailyTemplatePath);
+      const exists = !!(dailyTFile && dailyTFile instanceof obsidian.TFile);
+
+      const card = grid.createDiv({
+        cls: 'cad-proj-card cad-template-tile'
+      });
+      card.dataset.entity = 'daily';
+
+      const head = card.createDiv({ style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;' });
+
+      const infoWrap = head.createDiv({ style: 'display: flex; align-items: center; gap: 12px;' });
+      const iconSpan = infoWrap.createSpan({ cls: 'cad-template-tile-icon' });
+      try { obsidian.setIcon(iconSpan, 'sun'); } catch (_) { iconSpan.setText('☀️'); }
+
+      const titleInfo = infoWrap.createDiv();
+      titleInfo.createDiv({ text: 'PLANNER', style: 'font-weight: 700; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--text-muted);' });
+      titleInfo.createEl('h3', { text: 'Daily Note', style: 'margin: 2px 0 0 0; font-size: 1.15em; font-weight: 700;' });
+
+      const badge = head.createSpan({
+        cls: exists ? 'cad-pill cad-pill-active' : 'cad-pill cad-pill-backlog',
+        text: exists ? 'Active Template' : 'Default'
+      });
+      badge.style.fontSize = '0.7em';
+      badge.style.padding = '3px 8px';
+
+      card.createDiv({
+        text: `Target Folder: ${this.plugin.settings.dailyNoteFolder || 'daily'}/`,
+        style: 'font-size: 0.8em; font-family: monospace; color: var(--text-muted); background: var(--background-secondary); padding: 4px 8px; border-radius: 4px; margin-bottom: 12px; border: 1px solid var(--background-modifier-border);'
+      });
+
+      const desc = card.createDiv({
+        text: `Defines properties and sections layout for each new daily note created in the planner.`,
+        style: 'font-size: 0.85em; color: var(--text-muted); margin-bottom: 18px; flex: 1; line-height: 1.4;'
+      });
+
+      const actions = card.createDiv({ style: 'display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 14px; margin-top: auto;' });
+
+      if (exists) {
+        const editBtn = actions.createEl('button', { cls: 'cad-btn primary', text: 'Visual Editor' });
+        editBtn.style.padding = '5px 12px';
+        editBtn.style.height = 'auto';
+        editBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.openTemplateDetail('daily', dailyTFile);
+        });
+
+        const openBtn = actions.createEl('button', { cls: 'cad-btn', text: 'Raw Note 📝' });
+        openBtn.style.padding = '5px 12px';
+        openBtn.style.height = 'auto';
+        openBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.app.workspace.openLinkText(dailyTemplatePath, '', false);
+        });
+      } else {
+        const resetBtn = actions.createEl('button', {
+          cls: 'cad-btn primary',
+          text: 'Enable Custom'
+        });
+        resetBtn.style.padding = '5px 12px';
+        resetBtn.style.height = 'auto';
+        resetBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const dailyTemplateContent = [
+            '# {{date}}',
+            '',
+            '## Today',
+            '- [ ] ',
+            '',
+            '## Journal',
+            '',
+            ''
+          ].join('\n');
+          await this.app.vault.create(dailyTemplatePath, dailyTemplateContent);
+          new obsidian.Notice('Daily Note template successfully enabled.');
+          this.render();
+        });
+      }
+
+      card.addEventListener('click', () => {
+        if (exists) this.openTemplateDetail('daily', dailyTFile);
+      });
+    }
+
     for (const [entityKey, def] of Object.entries(ENTITIES)) {
       const templatesFolder = 'Cadence/Templates';
       await ensureFolderSync(this.app, templatesFolder);
@@ -6862,8 +6983,8 @@ priority: normal
   /* ── Template Detail builder — same layout as a live fiche ── */
   async renderTemplateDetail(root, entityKey, file) {
     root.addClass('cadence-project-detail');
-    const def = ENTITIES[entityKey];
-    if (!def || !file) { this.closeEntityDetail(); return; }
+    const def = ENTITIES[entityKey] || { label: 'Daily Note', plural: 'Daily Notes', fields: [] };
+    if (!file) { this.closeEntityDetail(); return; }
 
     const content = await this.app.vault.read(file);
     const sections = parseH2Sections(content);
@@ -9840,6 +9961,32 @@ priority: normal
       this._journalSaveTimer = setTimeout(() => this.saveTodayJournal(ta.value), 800);
     });
     setTimeout(() => { ta.style.height = ta.scrollHeight + 'px'; }, 0);
+
+    /* Custom sections from daily note */
+    const allSections = parseH2Sections(fileContent);
+    const cleanTasksHeading = (this.plugin.settings.tasksHeading || '## Today').replace(/^##\s+/, '').trim().toLowerCase();
+    const cleanJournalHeading = (this.plugin.settings.journalHeading || '## Journal').replace(/^##\s+/, '').trim().toLowerCase();
+
+    const otherKeys = Object.keys(allSections).filter((k) => {
+      const cleanK = parseHeaderKey(k).cleanLabel.toLowerCase();
+      return cleanK !== cleanTasksHeading && cleanK !== cleanJournalHeading;
+    });
+
+    if (otherKeys.length > 0) {
+      const customWrap = root.createDiv({ cls: 'cad-custom-sections' });
+      customWrap.style.marginTop = '24px';
+      customWrap.style.display = 'grid';
+      customWrap.style.gridTemplateColumns = 'repeat(auto-fit, minmax(320px, 1fr))';
+      customWrap.style.gap = '16px';
+
+      const flashSaved = () => {
+        new obsidian.Notice('Section saved');
+      };
+
+      otherKeys.forEach((rawKey) => {
+        this._renderDynamicH2Section(customWrap, this.todayFile, allSections, rawKey, flashSaved);
+      });
+    }
 
     /* Footer */
     const footer = root.createDiv();

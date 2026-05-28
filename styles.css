@@ -2014,6 +2014,7 @@ select.cad-form-input { appearance: auto; padding-right: 28px; }
 .cad-template-tile[data-entity="company"]::before { background: oklch(0.55 0.15 30); }
 .cad-template-tile[data-entity="partner"]::before { background: oklch(0.7 0.13 80); }
 .cad-template-tile[data-entity="activity"]::before { background: oklch(0.6 0.18 340); }
+.cad-template-tile[data-entity="daily"]::before { background: oklch(0.75 0.15 85); }
 
 .cad-template-tile-icon {
   font-size: 1.6em;
